@@ -18,8 +18,8 @@ CREATE TABLE IF NOT EXISTS stock_movements (
   FOREIGN KEY (part_id) REFERENCES parts(id)
 );
 
-CREATE INDEX idx_stock_movements_part_id ON stock_movements(part_id);
-CREATE INDEX idx_stock_movements_created_at ON stock_movements(created_at);
+CREATE INDEX IF NOT EXISTS idx_stock_movements_part_id ON stock_movements(part_id);
+CREATE INDEX IF NOT EXISTS idx_stock_movements_created_at ON stock_movements(created_at);
 
 CREATE TABLE IF NOT EXISTS low_stock_notifications (
   id INTEGER PRIMARY KEY AUTOINCREMENT,

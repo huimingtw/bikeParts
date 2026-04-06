@@ -11,11 +11,11 @@ import (
 	"time"
 
 	"github.com/huimingtw/bikeparts/db"
+	"github.com/huimingtw/bikeparts/handler"
+	"github.com/huimingtw/bikeparts/service"
 
 	"github.com/gin-gonic/gin"
 )
-
-var PORT = os.Getenv("PORT")
 
 func main() {
 	database, err := db.Init()
@@ -26,6 +26,14 @@ func main() {
 
 	router := gin.Default()
 
+	mailer := &service.EmailServiceImpl{}
+	h := handler.NewHandler(database, mailer)
+	router.GET("/api/mail_test", h.MailTest)
+
+	PORT := os.Getenv("PORT")
+	if PORT == "" {
+		PORT = "8080"
+	}
 	server := &http.Server{
 		Addr:    fmt.Sprintf(":%s", PORT),
 		Handler: router,
