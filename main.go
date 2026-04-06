@@ -26,8 +26,9 @@ func main() {
 
 	router := gin.Default()
 
-	mailer := &service.EmailServiceImpl{}
-	h := handler.NewHandler(database, mailer)
+	mailer := service.NewEmailService()
+	notifier := service.NewNotificationService(mailer)
+	h := handler.NewHandler(database, notifier)
 	router.GET("/api/mail_test", h.MailTest)
 
 	PORT := os.Getenv("PORT")

@@ -1,0 +1,58 @@
+package service
+
+import (
+	"context"
+	"fmt"
+	"time"
+
+	"github.com/huimingtw/bikeparts/db"
+	"github.com/huimingtw/bikeparts/models"
+)
+
+type NotificationService struct {
+	mailer EmailService
+}
+
+func NewNotificationService(mailer EmailService) *NotificationService {
+	return &NotificationService{mailer: mailer}
+}
+
+func (n *NotificationService) CheckAndNotify(ctx context.Context, database *db.DB, part models.Part) error {
+	if part.Stock > part.ReorderLevel {
+		return nil
+	}
+
+	tx, err := database.Db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	exists := false
+	err = tx.QueryRow("SELECT EXISTS(SELECT 1 FROM low_stock_notifications WHERE part_id = ? AND deleted_at IS NULL)", part.ID).Scan(&exists)
+	if err != nil {
+		return err
+	}
+
+	if exists {
+		return nil
+	}
+
+	_, err = tx.Exec("INSERT INTO low_stock_notifications (part_id, created_at) VALUES (?, ?)", part.ID, time.Now())
+	if err != nil {
+		return err
+	}
+
+	if err := tx.Commit(); err != nil {
+		return err
+	}
+
+	subject := fmt.Sprintf("[Low Stock] %s (SKU: %s) only %d left", part.Name, part.SKU, part.Stock)
+	body := fmt.Sprintf("Part %s (SKU: %s) is low on stock: %d remaining (reorder level: %d).", part.Name, part.SKU, part.Stock, part.ReorderLevel)
+	return n.mailer.Send(subject, body)
+}
+
+func (n *NotificationService) ClearNotification(database *db.DB, partID int64) error {
+	_, err := database.Db.Exec("UPDATE low_stock_notifications SET deleted_at = ? WHERE part_id = ? AND deleted_at IS NULL", time.Now(), partID)
+	return err
+}

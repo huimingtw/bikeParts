@@ -15,7 +15,7 @@ func (h *Handler) MailTest(c *gin.Context) {
 		Stock:        5,
 		ReorderLevel: 10,
 	}
-	err := h.mailer.SendLowStockEmail(part)
+	err := h.notifier.CheckAndNotify(c.Request.Context(), h.db, part)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return

@@ -6,16 +6,16 @@ import (
 )
 
 type Handler struct {
-	db     *db.DB
-	mailer service.EmailService
+	db       *db.DB
+	notifier *service.NotificationService
 }
 
 func NewHandler(
 	db *db.DB,
-	mailer service.EmailService,
+	notifier *service.NotificationService,
 ) *Handler {
 	return &Handler{
-		db,
-		mailer,
+		db:       db,
+		notifier: notifier,
 	}
 }
