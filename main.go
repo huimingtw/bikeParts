@@ -40,6 +40,7 @@ func main() {
 
 	api := router.Group("/api")
 	api.GET("/mail_test", h.MailTest)
+	api.GET("/parts", h.GetParts)
 
 	PORT := os.Getenv("PORT")
 	if PORT == "" {
