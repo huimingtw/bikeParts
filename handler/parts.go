@@ -41,21 +41,32 @@ func (h *Handler) GetParts(c *gin.Context) {
 	c.JSON(http.StatusOK, parts)
 }
 
+type GetPartByIDRequest struct {
+	ID int `uri:"id" binding:"required"`
+}
+
 func (h *Handler) GetPartByID(c *gin.Context) {
+	req := GetPartByIDRequest{}
+	err := c.ShouldBindUri(&req)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
+		return
+	}
+
 	ctx := c.Request.Context()
 	var p models.Part
-	err := h.db.QueryRowContext(ctx, `
+	err = h.db.QueryRowContext(ctx, `
 		SELECT id, sku, name, stock, reorder_level, created_at, updated_at
 		FROM parts
 		WHERE id = ? AND deleted_at IS NULL
-	`, c.Param("id"),
+	`, req.ID,
 	).Scan(&p.ID, &p.SKU, &p.Name, &p.Stock, &p.ReorderLevel, &p.CreatedAt, &p.UpdatedAt)
 	if errors.Is(err, sql.ErrNoRows) {
 		c.JSON(http.StatusNotFound, gin.H{"error": "part not found"})
 		return
 	}
 	if err != nil {
-		h.logger.ErrorContext(ctx, "failed to scan part by id", "id", c.Param("id"), "err", err)
+		h.logger.ErrorContext(ctx, "failed to scan part by id", "id", req.ID, "err", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
 		return
 	}
