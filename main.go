@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
@@ -28,8 +29,18 @@ func main() {
 
 	mailer := service.NewEmailService()
 	notifier := service.NewNotificationService(mailer)
-	h := handler.NewHandler(database, notifier)
-	router.GET("/api/mail_test", h.MailTest)
+	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
+		AddSource: true,
+		Level:     slog.LevelDebug,
+	}))
+	h := handler.NewHandler(
+		database,
+		notifier,
+		logger,
+	)
+
+	api := router.Group("/api")
+	api.GET("/mail_test", h.MailTest)
 
 	PORT := os.Getenv("PORT")
 	if PORT == "" {
