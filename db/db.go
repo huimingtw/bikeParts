@@ -9,26 +9,21 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 )
 
-type DB struct {
-	Db      *sql.DB
-	logFile string // path to log file
-}
-
-func Init() (*DB, error) {
-	var DB_PATH = os.Getenv("DB_PATH")
-	if DB_PATH == "" {
-		DB_PATH = "./db/data.db"
+func Init() (*sql.DB, error) {
+	dbPath := os.Getenv("DB_PATH")
+	if dbPath == "" {
+		dbPath = "./db/data.db"
 	}
 
-	if err := os.MkdirAll(filepath.Dir(DB_PATH), 0755); err != nil {
+	if err := os.MkdirAll(filepath.Dir(dbPath), 0755); err != nil {
 		return nil, err
 	}
 
-	db, err := sql.Open("sqlite3", DB_PATH)
+	db, err := sql.Open("sqlite3", dbPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open database: %v", err)
 	}
-	db.SetMaxOpenConns(1) // SQLite does not support concurrent writes, so we limit to 1 connection
+	db.SetMaxOpenConns(1) // SQLite does not support concurrent writes
 
 	schemaPath := os.Getenv("SCHEMA_PATH")
 	if schemaPath == "" {
@@ -42,25 +37,18 @@ func Init() (*DB, error) {
 		return nil, fmt.Errorf("failed to execute schema: %v", err)
 	}
 
-	logPath := os.Getenv("LOG_PATH")
-	if logPath == "" {
-		logPath = "."
-	}
-	logFile := filepath.Join(filepath.Dir(logPath), "app.log")
-	d := &DB{Db: db, logFile: logFile}
-
 	count := 0
 	db.QueryRow("SELECT COUNT(*) FROM parts").Scan(&count)
 	if count == 0 {
-		if err := d.seedInitialData(); err != nil {
+		if err := seedInitialData(db); err != nil {
 			return nil, fmt.Errorf("failed to seed initial data: %v", err)
 		}
 	}
 
-	return d, nil
+	return db, nil
 }
 
-func (d *DB) seedInitialData() error {
+func seedInitialData(db *sql.DB) error {
 	seedPath := os.Getenv("SEED_PATH")
 	if seedPath == "" {
 		seedPath = "./db/seed.sql"
@@ -69,12 +57,8 @@ func (d *DB) seedInitialData() error {
 	if err != nil {
 		return fmt.Errorf("failed to read seed file: %v", err)
 	}
-	if _, err := d.Db.Exec(string(seedBytes)); err != nil {
+	if _, err := db.Exec(string(seedBytes)); err != nil {
 		return fmt.Errorf("failed to execute seed data: %v", err)
 	}
 	return nil
-}
-
-func (d *DB) Close() error {
-	return d.Db.Close()
 }

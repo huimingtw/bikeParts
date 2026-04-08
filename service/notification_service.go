@@ -2,10 +2,10 @@ package service
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"time"
 
-	"github.com/huimingtw/bikeparts/db"
 	"github.com/huimingtw/bikeparts/models"
 )
 
@@ -17,12 +17,12 @@ func NewNotificationService(mailer EmailService) *NotificationService {
 	return &NotificationService{mailer: mailer}
 }
 
-func (n *NotificationService) CheckAndNotify(ctx context.Context, database *db.DB, part models.Part) error {
+func (n *NotificationService) CheckAndNotify(ctx context.Context, db *sql.DB, part models.Part) error {
 	if part.Stock > part.ReorderLevel {
 		return nil
 	}
 
-	tx, err := database.Db.BeginTx(ctx, nil)
+	tx, err := db.BeginTx(ctx, nil)
 	if err != nil {
 		return err
 	}
@@ -52,7 +52,7 @@ func (n *NotificationService) CheckAndNotify(ctx context.Context, database *db.D
 	return n.mailer.Send(subject, body)
 }
 
-func (n *NotificationService) ClearNotification(database *db.DB, partID int64) error {
-	_, err := database.Db.Exec("UPDATE low_stock_notifications SET deleted_at = ? WHERE part_id = ? AND deleted_at IS NULL", time.Now(), partID)
+func (n *NotificationService) ClearNotification(db *sql.DB, partID int64) error {
+	_, err := db.Exec("UPDATE low_stock_notifications SET deleted_at = ? WHERE part_id = ? AND deleted_at IS NULL", time.Now(), partID)
 	return err
 }
