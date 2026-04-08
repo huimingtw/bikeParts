@@ -16,9 +16,12 @@ import (
 	"github.com/huimingtw/bikeparts/service"
 
 	"github.com/gin-gonic/gin"
+	"github.com/joho/godotenv"
 )
 
 func main() {
+	_ = godotenv.Load()
+
 	database, err := db.Init()
 	if err != nil {
 		log.Fatalf("Failed to initialize database: %v", err)
@@ -27,17 +30,13 @@ func main() {
 
 	router := gin.Default()
 
-	mailer := service.NewEmailService()
-	notifier := service.NewNotificationService(mailer)
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
 		AddSource: true,
 		Level:     slog.LevelDebug,
 	}))
-	h := handler.NewHandler(
-		database,
-		notifier,
-		logger,
-	)
+	mailer := service.NewEmailService()
+	notifier := service.NewNotificationService(mailer, logger)
+	h := handler.NewHandler(database, notifier, logger)
 
 	api := router.Group("/api")
 	api.GET("/mail_test", h.MailTest)
