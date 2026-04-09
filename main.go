@@ -43,6 +43,7 @@ func main() {
 	api.GET("/parts", h.GetParts)
 	api.GET("/parts/:id", h.GetPartByID)
 	api.POST("/parts", h.CreatePart)
+	api.PUT("/parts/:id", h.UpdatePart)
 
 	PORT := os.Getenv("PORT")
 	if PORT == "" {

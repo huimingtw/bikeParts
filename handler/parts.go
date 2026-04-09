@@ -77,8 +77,8 @@ func (h *Handler) GetPartByID(c *gin.Context) {
 type CreatePartRequest struct {
 	SKU          string `json:"sku" binding:"required"`
 	Name         string `json:"name" binding:"required"`
-	Stock        int    `json:"stock" binding:"required"`
-	ReorderLevel int    `json:"reorder_level" binding:"required"`
+	Stock        int    `json:"stock" binding:"min=0"`
+	ReorderLevel int    `json:"reorder_level" binding:"min=0"`
 }
 
 func (h *Handler) CreatePart(c *gin.Context) {
@@ -104,7 +104,42 @@ func (h *Handler) CreatePart(c *gin.Context) {
 }
 
 func (h *Handler) UpdatePart(c *gin.Context) {
-	c.JSON(http.StatusNotImplemented, gin.H{"error": "not implemented"})
+	req := GetPartByIDRequest{}
+	err := c.ShouldBindUri(&req)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
+		return
+	}
+	body := CreatePartRequest{}
+	err = c.ShouldBindJSON(&body)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
+		return
+	}
+
+	ctx := c.Request.Context()
+	result, err := h.db.ExecContext(ctx, `
+		UPDATE parts
+		SET sku = ?, name = ?, stock = ?, reorder_level = ?, updated_at = datetime('now')
+		WHERE id = ? AND deleted_at IS NULL
+	`, body.SKU, body.Name, body.Stock, body.ReorderLevel, req.ID)
+	if err != nil {
+		h.logger.ErrorContext(ctx, "failed to update part", "id", req.ID, "err", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
+		return
+	}
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		h.logger.ErrorContext(ctx, "failed to get rows affected for update", "id", req.ID, "err", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
+		return
+	}
+	if rowsAffected == 0 {
+		c.JSON(http.StatusNotFound, gin.H{"error": "part not found"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{})
 }
 
 func (h *Handler) DeletePart(c *gin.Context) {
