@@ -143,5 +143,34 @@ func (h *Handler) UpdatePart(c *gin.Context) {
 }
 
 func (h *Handler) DeletePart(c *gin.Context) {
-	c.JSON(http.StatusNotImplemented, gin.H{"error": "not implemented"})
+	req := GetPartByIDRequest{}
+	err := c.ShouldBindUri(&req)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
+		return
+	}
+
+	ctx := c.Request.Context()
+	result, err := h.db.ExecContext(ctx, `
+		UPDATE parts
+		SET deleted_at = datetime('now')
+		WHERE id = ? AND deleted_at IS NULL
+	`, req.ID)
+	if err != nil {
+		h.logger.ErrorContext(ctx, "failed to delete part", "id", req.ID, "err", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
+		return
+	}
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		h.logger.ErrorContext(ctx, "failed to get rows affected for delete", "id", req.ID, "err", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
+		return
+	}
+	if rowsAffected == 0 {
+		c.JSON(http.StatusNotFound, gin.H{"error": "part not found"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{})
 }
