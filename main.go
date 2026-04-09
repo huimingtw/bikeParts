@@ -46,6 +46,7 @@ func main() {
 	api.POST("/parts", h.CreatePart)
 	api.PUT("/parts/:id", h.UpdatePart)
 	api.DELETE("/parts/:id", h.DeletePart)
+	api.GET("/notifications", h.GetNotifications)
 
 	idempotencyCache := middleware.NewIdempotencyCache()
 
