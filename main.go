@@ -42,6 +42,7 @@ func main() {
 	api.GET("/mail_test", h.MailTest)
 	api.GET("/parts", h.GetParts)
 	api.GET("/parts/:id", h.GetPartByID)
+	api.POST("/parts", h.CreatePart)
 
 	PORT := os.Getenv("PORT")
 	if PORT == "" {

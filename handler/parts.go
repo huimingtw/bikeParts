@@ -74,8 +74,33 @@ func (h *Handler) GetPartByID(c *gin.Context) {
 	c.JSON(http.StatusOK, p)
 }
 
+type CreatePartRequest struct {
+	SKU          string `json:"sku" binding:"required"`
+	Name         string `json:"name" binding:"required"`
+	Stock        int    `json:"stock" binding:"required"`
+	ReorderLevel int    `json:"reorder_level" binding:"required"`
+}
+
 func (h *Handler) CreatePart(c *gin.Context) {
-	c.JSON(http.StatusNotImplemented, gin.H{"error": "not implemented"})
+	req := CreatePartRequest{}
+	err := c.ShouldBindJSON(&req)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
+		return
+	}
+
+	ctx := c.Request.Context()
+	_, err = h.db.ExecContext(ctx, `
+		INSERT INTO parts (sku, name, stock, reorder_level, created_at, updated_at)
+		VALUES (?, ?, ?, ?, datetime('now'), datetime('now'))
+	`, req.SKU, req.Name, req.Stock, req.ReorderLevel)
+	if err != nil {
+		h.logger.ErrorContext(ctx, "failed to insert part", "sku", req.SKU, "err", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
+		return
+	}
+
+	c.JSON(http.StatusCreated, gin.H{})
 }
 
 func (h *Handler) UpdatePart(c *gin.Context) {
