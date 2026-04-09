@@ -13,6 +13,7 @@ import (
 
 	"github.com/huimingtw/bikeparts/db"
 	"github.com/huimingtw/bikeparts/handler"
+	"github.com/huimingtw/bikeparts/middleware"
 	"github.com/huimingtw/bikeparts/service"
 
 	"github.com/gin-gonic/gin"
@@ -45,8 +46,11 @@ func main() {
 	api.POST("/parts", h.CreatePart)
 	api.PUT("/parts/:id", h.UpdatePart)
 	api.DELETE("/parts/:id", h.DeletePart)
-	api.POST("/parts/:id/increase", h.IncreasePartStock)
-	api.POST("/parts/:id/decrease", h.DecreasePartStock)
+
+	idempotencyCache := middleware.NewIdempotencyCache()
+
+	api.POST("/parts/:id/increase", idempotencyCache.Middleware(), h.IncreasePartStock)
+	api.POST("/parts/:id/decrease", idempotencyCache.Middleware(), h.DecreasePartStock)
 
 	PORT := os.Getenv("PORT")
 	if PORT == "" {
