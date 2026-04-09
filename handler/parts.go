@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 	"net/http"
@@ -41,12 +42,12 @@ func (h *Handler) GetParts(c *gin.Context) {
 	c.JSON(http.StatusOK, parts)
 }
 
-type GetPartByIDRequest struct {
+type IDPathParam struct {
 	ID int `uri:"id" binding:"required"`
 }
 
 func (h *Handler) GetPartByID(c *gin.Context) {
-	req := GetPartByIDRequest{}
+	req := IDPathParam{}
 	err := c.ShouldBindUri(&req)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
@@ -104,7 +105,7 @@ func (h *Handler) CreatePart(c *gin.Context) {
 }
 
 func (h *Handler) UpdatePart(c *gin.Context) {
-	req := GetPartByIDRequest{}
+	req := IDPathParam{}
 	err := c.ShouldBindUri(&req)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
@@ -143,7 +144,7 @@ func (h *Handler) UpdatePart(c *gin.Context) {
 }
 
 func (h *Handler) DeletePart(c *gin.Context) {
-	req := GetPartByIDRequest{}
+	req := IDPathParam{}
 	err := c.ShouldBindUri(&req)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
@@ -169,6 +170,117 @@ func (h *Handler) DeletePart(c *gin.Context) {
 	}
 	if rowsAffected == 0 {
 		c.JSON(http.StatusNotFound, gin.H{"error": "part not found"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{})
+}
+
+var ErrInsufficientStock = errors.New("insufficient stock")
+
+type AdjustStockRequest struct {
+	Amount int    `json:"amount" binding:"required,min=1"`
+	Note   string `json:"note"`
+}
+
+func (h *Handler) adjustPartStock(ctx context.Context, partID int, amount int, note string) error {
+	tx, err := h.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	var currentStock, reorderLevel int
+	err = tx.QueryRowContext(ctx,
+		"SELECT stock, reorder_level FROM parts WHERE id = ? AND deleted_at IS NULL", partID).
+		Scan(&currentStock, &reorderLevel)
+	if err != nil {
+		return err
+	}
+
+	newStock := currentStock + amount
+	if newStock < 0 {
+		return ErrInsufficientStock
+	}
+
+	_, err = tx.ExecContext(ctx,
+		"UPDATE parts SET stock = ?, updated_at = datetime('now') WHERE id = ?", newStock, partID)
+	if err != nil {
+		return err
+	}
+
+	_, err = tx.ExecContext(ctx,
+		"INSERT INTO stock_movements (part_id, quantity, note) VALUES (?, ?, ?)", partID, amount, note)
+	if err != nil {
+		return err
+	}
+
+	part := models.Part{ID: int64(partID), Stock: newStock, ReorderLevel: reorderLevel}
+	if amount > 0 {
+		if err := h.notifier.ClearNotification(ctx, tx, part.ID); err != nil {
+			return err
+		}
+	} else {
+		if err := h.notifier.CheckAndNotify(ctx, tx, part); err != nil {
+			return err
+		}
+	}
+
+	return tx.Commit()
+}
+
+func (h *Handler) IncreasePartStock(c *gin.Context) {
+	req := IDPathParam{}
+	err := c.ShouldBindUri(&req)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
+		return
+	}
+	body := AdjustStockRequest{}
+	err = c.ShouldBindJSON(&body)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
+		return
+	}
+
+	if err := h.adjustPartStock(c.Request.Context(), req.ID, body.Amount, body.Note); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "part not found"})
+			return
+		}
+		h.logger.ErrorContext(c.Request.Context(), "failed to increase part stock", "id", req.ID, "err", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{})
+}
+
+func (h *Handler) DecreasePartStock(c *gin.Context) {
+	req := IDPathParam{}
+	err := c.ShouldBindUri(&req)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
+		return
+	}
+	body := AdjustStockRequest{}
+	err = c.ShouldBindJSON(&body)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
+		return
+	}
+
+	if err := h.adjustPartStock(c.Request.Context(), req.ID, -body.Amount, body.Note); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "part not found"})
+			return
+		}
+		if errors.Is(err, ErrInsufficientStock) {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "insufficient stock"})
+			return
+		}
+		h.logger.ErrorContext(c.Request.Context(), "failed to decrease part stock", "id", req.ID, "err", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
 		return
 	}
 
