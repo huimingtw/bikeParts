@@ -16,6 +16,10 @@ import (
 	"github.com/huimingtw/bikeparts/service"
 )
 
+type noopMailer struct{}
+
+func (n *noopMailer) Send(subject, body string) error { return nil }
+
 var testRouter *gin.Engine
 var testDB *sql.DB
 
@@ -33,7 +37,7 @@ func TestMain(m *testing.M) {
 		AddSource: true,
 		Level:     slog.LevelDebug,
 	}))
-	mailer := service.NewEmailService()
+	mailer := &noopMailer{}
 	notifier := service.NewNotificationService(mailer, logger)
 	h := handler.NewHandler(db, notifier, logger)
 	ic := middleware.NewIdempotencyCache()
