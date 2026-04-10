@@ -37,11 +37,14 @@ func Init() (*sql.DB, error) {
 		return nil, fmt.Errorf("failed to execute schema: %v", err)
 	}
 
-	count := 0
-	db.QueryRow("SELECT COUNT(*) FROM parts").Scan(&count)
-	if count == 0 {
-		if err := seedInitialData(db); err != nil {
-			return nil, fmt.Errorf("failed to seed initial data: %v", err)
+	// seed data only if SEED_PATH is set and parts table is empty
+	if os.Getenv("SEED_PATH") != "" {
+		count := 0
+		db.QueryRow("SELECT COUNT(*) FROM parts").Scan(&count)
+		if count == 0 {
+			if err := seedInitialData(db); err != nil {
+				return nil, fmt.Errorf("failed to seed initial data: %v", err)
+			}
 		}
 	}
 

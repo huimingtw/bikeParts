@@ -14,9 +14,9 @@ import (
 	"github.com/huimingtw/bikeparts/db"
 	"github.com/huimingtw/bikeparts/handler"
 	"github.com/huimingtw/bikeparts/middleware"
+	"github.com/huimingtw/bikeparts/router"
 	"github.com/huimingtw/bikeparts/service"
 
-	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
 )
 
@@ -29,8 +29,6 @@ func main() {
 	}
 	defer database.Close()
 
-	router := gin.Default()
-
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
 		AddSource: true,
 		Level:     slog.LevelDebug,
@@ -38,20 +36,9 @@ func main() {
 	mailer := service.NewEmailService()
 	notifier := service.NewNotificationService(mailer, logger)
 	h := handler.NewHandler(database, notifier, logger)
+	ic := middleware.NewIdempotencyCache()
 
-	api := router.Group("/api")
-	api.GET("/mail_test", h.MailTest)
-	api.GET("/parts", h.GetParts)
-	api.GET("/parts/:id", h.GetPartByID)
-	api.POST("/parts", h.CreatePart)
-	api.PUT("/parts/:id", h.UpdatePart)
-	api.DELETE("/parts/:id", h.DeletePart)
-	api.GET("/notifications", h.GetNotifications)
-
-	idempotencyCache := middleware.NewIdempotencyCache()
-
-	api.POST("/parts/:id/increase", idempotencyCache.Middleware(), h.IncreasePartStock)
-	api.POST("/parts/:id/decrease", idempotencyCache.Middleware(), h.DecreasePartStock)
+	r := router.NewRouter(h, ic)
 
 	PORT := os.Getenv("PORT")
 	if PORT == "" {
@@ -59,7 +46,7 @@ func main() {
 	}
 	server := &http.Server{
 		Addr:    fmt.Sprintf(":%s", PORT),
-		Handler: router,
+		Handler: r,
 	}
 
 	go func() {

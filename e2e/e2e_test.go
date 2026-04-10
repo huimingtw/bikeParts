@@ -1,0 +1,65 @@
+package e2e
+
+import (
+	"database/sql"
+	"io"
+	"log/slog"
+	"net/http/httptest"
+	"os"
+	"testing"
+
+	"github.com/gin-gonic/gin"
+	sqlite "github.com/huimingtw/bikeparts/db"
+	"github.com/huimingtw/bikeparts/handler"
+	"github.com/huimingtw/bikeparts/middleware"
+	"github.com/huimingtw/bikeparts/router"
+	"github.com/huimingtw/bikeparts/service"
+)
+
+var testRouter *gin.Engine
+var testDB *sql.DB
+
+func TestMain(m *testing.M) {
+	// create in-memory SQLite database
+	os.Setenv("DB_PATH", ":memory:")
+	os.Setenv("SCHEMA_PATH", "../db/schema.sql")
+	db, err := sqlite.Init()
+	if err != nil {
+		panic(err)
+	}
+
+	// initialize router with test dependencies
+	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
+		AddSource: true,
+		Level:     slog.LevelDebug,
+	}))
+	mailer := service.NewEmailService()
+	notifier := service.NewNotificationService(mailer, logger)
+	h := handler.NewHandler(db, notifier, logger)
+	ic := middleware.NewIdempotencyCache()
+
+	// expose resources
+	testRouter = router.NewRouter(h, ic)
+	testDB = db
+
+	os.Exit(m.Run())
+}
+
+func makeRequest(method, url string, body io.Reader) *httptest.ResponseRecorder {
+	req := httptest.NewRequest(method, url, body)
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	testRouter.ServeHTTP(w, req)
+	return w
+}
+
+func truncateTables() {
+	tables := []string{
+		"parts",
+		"stock_movements",
+		"low_stock_notifications",
+	}
+	for _, t := range tables {
+		testDB.Exec("DELETE FROM ?" + t)
+	}
+}
