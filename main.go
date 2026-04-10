@@ -38,7 +38,7 @@ func main() {
 	h := handler.NewHandler(database, notifier, logger)
 	ic := middleware.NewIdempotencyCache()
 
-	r := router.NewRouter(h, ic)
+	r := router.NewRouter(h, ic, logger)
 
 	PORT := os.Getenv("PORT")
 	if PORT == "" {

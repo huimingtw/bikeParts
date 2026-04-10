@@ -1,6 +1,8 @@
 package router
 
 import (
+	"log/slog"
+
 	"github.com/gin-gonic/gin"
 	"github.com/huimingtw/bikeparts/handler"
 	"github.com/huimingtw/bikeparts/middleware"
@@ -9,8 +11,14 @@ import (
 func NewRouter(
 	h *handler.Handler,
 	ic *middleware.IdempotencyCache,
+	logger *slog.Logger,
 ) *gin.Engine {
-	router := gin.Default()
+	router := gin.New()
+	router.Use(gin.Recovery())
+	router.Use(middleware.Logger(logger))
+
+	router.Static("/static", "./frontend")
+	router.StaticFile("/", "./frontend/index.html")
 
 	api := router.Group("/api")
 	api.GET("/parts", h.GetParts)

@@ -43,7 +43,7 @@ func TestMain(m *testing.M) {
 	ic := middleware.NewIdempotencyCache()
 
 	// expose resources
-	testRouter = router.NewRouter(h, ic)
+	testRouter = router.NewRouter(h, ic, logger)
 	testDB = db
 
 	os.Exit(m.Run())

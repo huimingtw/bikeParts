@@ -26,6 +26,7 @@ func NewNotificationService(mailer EmailService, logger *slog.Logger) *Notificat
 
 func (n *NotificationService) CheckAndNotify(ctx context.Context, db dbQuerier, part models.Part) error {
 	if part.Stock > part.ReorderLevel {
+		n.logger.DebugContext(ctx, "stock above reorder level, skip notification", "part_id", part.ID, "sku", part.SKU, "stock", part.Stock, "reorder_level", part.ReorderLevel)
 		return nil
 	}
 
@@ -37,6 +38,7 @@ func (n *NotificationService) CheckAndNotify(ctx context.Context, db dbQuerier, 
 		return err
 	}
 	if exists {
+		n.logger.DebugContext(ctx, "notification already exists, skip", "part_id", part.ID, "sku", part.SKU)
 		return nil
 	}
 

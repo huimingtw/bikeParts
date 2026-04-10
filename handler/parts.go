@@ -191,9 +191,10 @@ func (h *Handler) adjustPartStock(ctx context.Context, partID int, amount int, n
 	defer tx.Rollback()
 
 	var currentStock, reorderLevel int
+	var sku, name string
 	err = tx.QueryRowContext(ctx,
-		"SELECT stock, reorder_level FROM parts WHERE id = ? AND deleted_at IS NULL", partID).
-		Scan(&currentStock, &reorderLevel)
+		"SELECT stock, reorder_level, sku, name FROM parts WHERE id = ? AND deleted_at IS NULL", partID).
+		Scan(&currentStock, &reorderLevel, &sku, &name)
 	if err != nil {
 		return err
 	}
@@ -215,7 +216,7 @@ func (h *Handler) adjustPartStock(ctx context.Context, partID int, amount int, n
 		return err
 	}
 
-	part := models.Part{ID: int64(partID), Stock: newStock, ReorderLevel: reorderLevel}
+	part := models.Part{ID: int64(partID), SKU: sku, Name: name, Stock: newStock, ReorderLevel: reorderLevel}
 	if amount > 0 {
 		if err := h.notifier.ClearNotification(ctx, tx, part.ID); err != nil {
 			return err

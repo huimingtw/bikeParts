@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>零件庫存系統</title>
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+  <div class="layout">
+    <nav class="sidebar">
+      <div class="sidebar-logo">零件庫存系統</div>
+      <ul class="sidebar-nav">
+        <li><a href="#" class="nav-link active" data-page="parts">零件列表</a></li>
+        <li><a href="#" class="nav-link" data-page="increase">補貨</a></li>
+        <li><a href="#" class="nav-link" data-page="decrease">消耗</a></li>
+        <li><a href="#" class="nav-link" data-page="notifications">低庫存通知</a></li>
+      </ul>
+    </nav>
+
+    <main class="content">
+
+      <!-- 零件列表 -->
+      <section id="page-parts" class="page active">
+        <div class="page-header">
+          <h1>零件列表</h1>
+          <button class="btn btn-primary" id="btn-new-part">＋ 新增零件</button>
+        </div>
+        <div id="parts-message" class="message hidden"></div>
+        <table class="data-table" id="parts-table">
+          <thead>
+            <tr>
+              <th>SKU</th>
+              <th>名稱</th>
+              <th>庫存</th>
+              <th>再訂購水位</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody id="parts-tbody"></tbody>
+        </table>
+      </section>
+
+      <!-- 新增 / 編輯零件 -->
+      <section id="page-part-form" class="page">
+        <div class="page-header">
+          <h1 id="part-form-title">新增零件</h1>
+          <button class="btn btn-secondary" id="btn-back-parts">← 返回列表</button>
+        </div>
+        <div id="part-form-message" class="message hidden"></div>
+        <form class="form-card" id="part-form">
+          <input type="hidden" id="part-id" />
+          <div class="form-group">
+            <label for="part-sku">SKU</label>
+            <input type="text" id="part-sku" placeholder="例：BRK-001" required />
+          </div>
+          <div class="form-group">
+            <label for="part-name">名稱</label>
+            <input type="text" id="part-name" placeholder="例：煞車皮" required />
+          </div>
+          <div class="form-group">
+            <label for="part-stock">庫存數量</label>
+            <input type="number" id="part-stock" min="0" value="0" required />
+          </div>
+          <div class="form-group">
+            <label for="part-reorder">再訂購水位</label>
+            <input type="number" id="part-reorder" min="0" value="0" required />
+          </div>
+          <div class="form-actions">
+            <button type="submit" class="btn btn-primary" id="part-form-submit">儲存</button>
+            <button type="button" class="btn btn-danger hidden" id="btn-delete-part">刪除零件</button>
+          </div>
+        </form>
+      </section>
+
+      <!-- 補貨 -->
+      <section id="page-increase" class="page">
+        <div class="page-header">
+          <h1>補貨</h1>
+        </div>
+        <div id="increase-message" class="message hidden"></div>
+        <div class="stock-panel">
+          <div class="stock-list-header">
+            <span class="col-part">零件</span>
+            <span class="col-amount">數量</span>
+            <span class="col-note">備註</span>
+            <span class="col-action"></span>
+          </div>
+          <div id="increase-list"></div>
+          <div class="stock-list-footer">
+            <button type="button" class="btn btn-secondary" id="btn-add-increase">＋ 新增一筆</button>
+          </div>
+          <div class="stock-submit-row">
+            <button type="button" class="btn btn-primary" id="btn-submit-increase">確認補貨</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- 消耗 -->
+      <section id="page-decrease" class="page">
+        <div class="page-header">
+          <h1>消耗</h1>
+        </div>
+        <div id="decrease-message" class="message hidden"></div>
+        <div class="stock-panel">
+          <div class="stock-list-header">
+            <span class="col-part">零件</span>
+            <span class="col-amount">數量</span>
+            <span class="col-note">備註</span>
+            <span class="col-action"></span>
+          </div>
+          <div id="decrease-list"></div>
+          <div class="stock-list-footer">
+            <button type="button" class="btn btn-secondary" id="btn-add-decrease">＋ 新增一筆</button>
+          </div>
+          <div class="stock-submit-row">
+            <button type="button" class="btn btn-primary" id="btn-submit-decrease">確認消耗</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- 低庫存通知 -->
+      <section id="page-notifications" class="page">
+        <div class="page-header">
+          <h1>低庫存通知</h1>
+          <button class="btn btn-secondary" id="btn-refresh-notifications">重新整理</button>
+        </div>
+        <div id="notifications-empty" class="empty-state hidden">目前無低庫存通知</div>
+        <table class="data-table" id="notifications-table">
+          <thead>
+            <tr>
+              <th>SKU</th>
+              <th>名稱</th>
+              <th>再訂購水位</th>
+              <th>通知時間</th>
+            </tr>
+          </thead>
+          <tbody id="notifications-tbody"></tbody>
+        </table>
+      </section>
+
+    </main>
+  </div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
