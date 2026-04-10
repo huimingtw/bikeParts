@@ -60,6 +60,7 @@ func truncateTables() {
 		"low_stock_notifications",
 	}
 	for _, t := range tables {
-		testDB.Exec("DELETE FROM ?" + t)
+		testDB.Exec("DELETE FROM " + t)
+		testDB.Exec("DELETE FROM sqlite_sequence WHERE name = ?", t)
 	}
 }
