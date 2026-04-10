@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"io"
 	"testing"
+	"time"
 
 	"github.com/huimingtw/bikeparts/models"
 
@@ -13,12 +14,15 @@ import (
 func TestGetParts(t *testing.T) {
 	t.Run("should return all parts", func(t *testing.T) {
 		truncateTables()
+		now := time.Now()
 		parts := []models.Part{
 			{SKU: "BRK-001", Name: "Brake Pad", Stock: 10, ReorderLevel: 5},
 			{SKU: "TIR-002", Name: "Tire", Stock: 20, ReorderLevel: 10},
 			{SKU: "CHN-003", Name: "Chain", Stock: 15, ReorderLevel: 7},
 			{SKU: "SAD-004", Name: "Saddle", Stock: 5, ReorderLevel: 3},
 			{SKU: "HND-005", Name: "Handlebar", Stock: 8, ReorderLevel: 4},
+			// deleted
+			{SKU: "DEL-006", Name: "Deleted Part", Stock: 0, ReorderLevel: 0, DeletedAt: &now},
 		}
 		tx, _ := testDB.Begin()
 		for _, p := range parts {
