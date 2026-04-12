@@ -35,10 +35,6 @@ make run
 | `make seed` | Seed the DB with sample data (requires `sqlite3` CLI) |
 | `make build` | Build binary to `bin/bikeparts` |
 | `make e2e_test` | Run e2e tests |
-| `make db_clear` | Delete the SQLite DB file |
-| `make docker_build` | Build Docker image |
-| `make docker_run` | Run in Docker (DB persisted to `./db`) |
-| `make docker_clean` | Remove Docker image |
 
 ## Environment Variables
 
