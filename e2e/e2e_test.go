@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"io"
 	"log/slog"
+	"net/http"
 	"net/http/httptest"
 	"os"
 	"testing"
@@ -25,9 +26,15 @@ var testDB *sql.DB
 
 func TestMain(m *testing.M) {
 	// create in-memory SQLite database
-	os.Setenv("DB_PATH", ":memory:")
-	os.Setenv("SCHEMA_PATH", "../db/schema.sql")
-	db, err := sqlite.Init()
+	schemaBytes, err := os.ReadFile("../db/schema.sql")
+	if err != nil {
+		panic(err)
+	}
+
+	db, err := sqlite.Init(sqlite.Config{
+		DBPath: ":memory:",
+		Schema: schemaBytes,
+	})
 	if err != nil {
 		panic(err)
 	}
@@ -43,7 +50,7 @@ func TestMain(m *testing.M) {
 	ic := middleware.NewIdempotencyCache()
 
 	// expose resources
-	testRouter = router.NewRouter(h, ic, logger)
+	testRouter = router.NewRouter(h, ic, logger, http.Dir("../frontend"))
 	testDB = db
 
 	os.Exit(m.Run())

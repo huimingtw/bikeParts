@@ -27,12 +27,14 @@ make run
 # open http://localhost:8080
 ```
 
+The app creates its SQLite database in the user config directory by default instead of writing to `./db/data.db`.
+
 ## Make Commands
 
 | Command | Description |
 |---------|-------------|
 | `make run` | Start the server |
-| `make seed` | Seed the DB with sample data (requires `sqlite3` CLI) |
+| `make seed` | Seed the project-local DB with sample data for development (requires `sqlite3` CLI) |
 | `make build` | Build binary to `bin/bikeparts` |
 | `make e2e_test` | Run e2e tests |
 
@@ -41,8 +43,7 @@ make run
 | Key | Description |
 |-----|-------------|
 | `PORT` | HTTP port (default: `8080`) |
-| `DB_PATH` | SQLite file path (default: `./db/data.db`) |
-| `SCHEMA_PATH` | Schema SQL path (default: `./db/schema.sql`) |
+| `DB_PATH` | SQLite file path (default: user config dir, e.g. `%AppData%/bikeparts/data.db` on Windows) |
 | `EMAIL_USER` | Gmail address |
 | `EMAIL_PASS` | Gmail app password |
 | `EMAIL_TO` | Alert recipient email |

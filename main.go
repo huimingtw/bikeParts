@@ -2,12 +2,15 @@ package main
 
 import (
 	"context"
+	"embed"
 	"fmt"
+	"io/fs"
 	"log"
 	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"syscall"
 	"time"
 
@@ -20,10 +23,29 @@ import (
 	"github.com/joho/godotenv"
 )
 
+//go:embed db/schema.sql frontend/*
+var assetsFS embed.FS
+
 func main() {
 	_ = godotenv.Load()
 
-	database, err := db.Init()
+	schemaBytes, err := assetsFS.ReadFile("db/schema.sql")
+	if err != nil {
+		log.Fatalf("Failed to read schema file: %v", err)
+	}
+
+	dbPath := os.Getenv("DB_PATH")
+	if dbPath == "" {
+		dbPath, err = defaultDBPath()
+		if err != nil {
+			log.Fatalf("Failed to determine default DB path: %v", err)
+		}
+	}
+
+	database, err := db.Init(db.Config{
+		DBPath: dbPath,
+		Schema: schemaBytes,
+	})
 	if err != nil {
 		log.Fatalf("Failed to initialize database: %v", err)
 	}
@@ -38,7 +60,11 @@ func main() {
 	h := handler.NewHandler(database, notifier, logger)
 	ic := middleware.NewIdempotencyCache()
 
-	r := router.NewRouter(h, ic, logger)
+	frontendFS, err := fs.Sub(assetsFS, "frontend")
+	if err != nil {
+		log.Fatalf("Failed to create sub filesystem: %v", err)
+	}
+	r := router.NewRouter(h, ic, logger, http.FS(frontendFS))
 
 	PORT := os.Getenv("PORT")
 	if PORT == "" {
@@ -69,4 +95,12 @@ func main() {
 		log.Fatalf("Server forced to shutdown: %v", err)
 	}
 
+}
+
+func defaultDBPath() (string, error) {
+	baseDir, err := os.UserConfigDir()
+	if err != nil {
+		return "", fmt.Errorf("failed to get user config dir: %v", err)
+	}
+	return filepath.Join(baseDir, "bikeparts", "data.db"), nil
 }

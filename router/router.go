@@ -2,6 +2,7 @@ package router
 
 import (
 	"log/slog"
+	"net/http"
 
 	"github.com/gin-gonic/gin"
 	"github.com/huimingtw/bikeparts/handler"
@@ -12,13 +13,16 @@ func NewRouter(
 	h *handler.Handler,
 	ic *middleware.IdempotencyCache,
 	logger *slog.Logger,
+	assets http.FileSystem,
 ) *gin.Engine {
 	router := gin.New()
 	router.Use(gin.Recovery())
 	router.Use(middleware.Logger(logger))
 
-	router.Static("/static", "./frontend")
-	router.StaticFile("/", "./frontend/index.html")
+	router.StaticFS("/static", assets)
+	router.GET("/", func(c *gin.Context) {
+		c.FileFromFS("index.html", assets)
+	})
 
 	api := router.Group("/api")
 	api.GET("/parts", h.GetParts)

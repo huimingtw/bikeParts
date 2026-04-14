@@ -9,14 +9,22 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 )
 
-func Init() (*sql.DB, error) {
-	dbPath := os.Getenv("DB_PATH")
+type Config struct {
+	DBPath string
+	Schema []byte // provided by main package
+	Seed   []byte // optional seed data for development or tests
+}
+
+func Init(cfg Config) (*sql.DB, error) {
+	dbPath := cfg.DBPath
 	if dbPath == "" {
-		dbPath = "./db/data.db"
+		return nil, fmt.Errorf("db path is required")
 	}
 
-	if err := os.MkdirAll(filepath.Dir(dbPath), 0755); err != nil {
-		return nil, err
+	if dbPath != ":memory:" {
+		if err := os.MkdirAll(filepath.Dir(dbPath), 0o755); err != nil {
+			return nil, err
+		}
 	}
 
 	db, err := sql.Open("sqlite3", dbPath)
@@ -25,43 +33,24 @@ func Init() (*sql.DB, error) {
 	}
 	db.SetMaxOpenConns(1) // SQLite does not support concurrent writes
 
-	schemaPath := os.Getenv("SCHEMA_PATH")
-	if schemaPath == "" {
-		schemaPath = "./db/schema.sql"
+	if len(cfg.Schema) == 0 {
+		return nil, fmt.Errorf("schema is required")
 	}
-	schemaBytes, err := os.ReadFile(schemaPath)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read schema file: %v", err)
-	}
-	if _, err := db.Exec(string(schemaBytes)); err != nil {
+	if _, err := db.Exec(string(cfg.Schema)); err != nil {
 		return nil, fmt.Errorf("failed to execute schema: %v", err)
 	}
 
-	// seed data only if SEED_PATH is set and parts table is empty
-	if os.Getenv("SEED_PATH") != "" {
+	if len(cfg.Seed) > 0 {
 		count := 0
-		db.QueryRow("SELECT COUNT(*) FROM parts").Scan(&count)
+		if err := db.QueryRow("SELECT COUNT(*) FROM parts").Scan(&count); err != nil {
+			return nil, fmt.Errorf("failed to check parts count: %v", err)
+		}
 		if count == 0 {
-			if err := seedInitialData(db); err != nil {
-				return nil, fmt.Errorf("failed to seed initial data: %v", err)
+			if _, err := db.Exec(string(cfg.Seed)); err != nil {
+				return nil, fmt.Errorf("failed to execute seed data: %v", err)
 			}
 		}
 	}
 
 	return db, nil
-}
-
-func seedInitialData(db *sql.DB) error {
-	seedPath := os.Getenv("SEED_PATH")
-	if seedPath == "" {
-		seedPath = "./db/seed.sql"
-	}
-	seedBytes, err := os.ReadFile(seedPath)
-	if err != nil {
-		return fmt.Errorf("failed to read seed file: %v", err)
-	}
-	if _, err := db.Exec(string(seedBytes)); err != nil {
-		return fmt.Errorf("failed to execute seed data: %v", err)
-	}
-	return nil
 }
