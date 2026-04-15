@@ -3,3 +3,4 @@ SPEC.md
 AGENTS.md
 .claude/
 db/data.db
+bin/
