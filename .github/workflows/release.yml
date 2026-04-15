@@ -1,0 +1,31 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build-windows:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Install mingw-w64
+        run: sudo apt-get install -y gcc-mingw-w64-x86-64
+
+      - name: Build Windows binary
+        run: |
+          CGO_ENABLED=1 GOOS=windows GOARCH=amd64 CC=x86_64-w64-mingw32-gcc \
+          go build -ldflags "-H windowsgui" -o bin/bikeparts.exe .
+
+      - name: Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: bin/bikeparts.exe
