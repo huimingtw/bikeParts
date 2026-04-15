@@ -35,5 +35,9 @@ func NewRouter(
 	api.POST("/parts/:id/increase", ic.Middleware(), h.IncreasePartStock)
 	api.POST("/parts/:id/decrease", ic.Middleware(), h.DecreasePartStock)
 
+	api.GET("/settings", h.GetSettings)
+	api.PUT("/settings", h.SaveSettings)
+	api.POST("/settings/test-email", h.TestEmail)
+
 	return router
 }

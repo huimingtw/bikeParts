@@ -16,6 +16,7 @@ function showPage(pageId) {
   if (pageId === 'increase') loadStockPage('increase');
   if (pageId === 'decrease') loadStockPage('decrease');
   if (pageId === 'notifications') loadNotifications();
+  if (pageId === 'settings') loadSettings();
 }
 
 navLinks.forEach(link => {
@@ -327,6 +328,111 @@ async function loadNotifications() {
 
 document.getElementById('btn-refresh-notifications').addEventListener('click', loadNotifications);
 
+// ── Settings ──────────────────────────────────────────────────────────────────
+
+async function loadSettings() {
+  const { ok, data } = await apiFetch('/settings');
+  if (!ok) return;
+
+  document.getElementById('settings-email-user').value = data.email_user || '';
+  document.getElementById('settings-email-pass').value = data.email_pass || '';
+  document.getElementById('settings-email-to').value   = data.email_to   || '';
+  document.getElementById('settings-smtp-port').value  = data.smtp_port  || '587';
+  document.getElementById('settings-port').value       = data.port       || '8080';
+}
+
+document.getElementById('settings-form').addEventListener('submit', async e => {
+  e.preventDefault();
+  const body = {
+    email_user: document.getElementById('settings-email-user').value.trim(),
+    email_pass: document.getElementById('settings-email-pass').value,
+    email_to:   document.getElementById('settings-email-to').value.trim(),
+    smtp_port:  document.getElementById('settings-smtp-port').value.trim(),
+    port:       document.getElementById('settings-port').value.trim(),
+  };
+
+  const { ok, data } = await apiFetch('/settings', { method: 'PUT', body: JSON.stringify(body) });
+  if (ok) {
+    const msg = data.restart_required
+      ? '設定已儲存。Port 已變更，請重啟程式後生效。'
+      : '設定已儲存。';
+    showMessage('settings-message', 'success', msg);
+    loadSettings(); // reload to show masked password
+  } else {
+    showMessage('settings-message', 'error', '儲存失敗，請再試一次');
+  }
+});
+
+document.getElementById('btn-test-email').addEventListener('click', async () => {
+  const btn = document.getElementById('btn-test-email');
+  setLoading(btn, true);
+  try {
+    const { ok, data } = await apiFetch('/settings/test-email', { method: 'POST' });
+    if (ok) {
+      showMessage('settings-message', 'success', '測試信已寄出，請檢查收件匣。');
+    } else {
+      showMessage('settings-message', 'error', `寄送失敗：${data.error || '未知錯誤'}`);
+    }
+  } finally {
+    setLoading(btn, false);
+  }
+});
+
+// ── Setup Wizard ──────────────────────────────────────────────────────────────
+
+async function checkFirstRun() {
+  const { ok, data } = await apiFetch('/settings');
+  if (ok && !data.is_configured) {
+    document.getElementById('setup-overlay').classList.remove('hidden');
+  }
+}
+
+document.getElementById('setup-form').addEventListener('submit', async e => {
+  e.preventDefault();
+  const body = {
+    email_user: document.getElementById('setup-email-user').value.trim(),
+    email_pass: document.getElementById('setup-email-pass').value,
+    email_to:   document.getElementById('setup-email-to').value.trim(),
+    smtp_port:  document.getElementById('setup-smtp-port').value.trim(),
+    port:       '8080',
+  };
+
+  const { ok } = await apiFetch('/settings', { method: 'PUT', body: JSON.stringify(body) });
+  if (ok) {
+    document.getElementById('setup-overlay').classList.add('hidden');
+    showMessage('parts-message', 'success', '設定完成，歡迎使用零件庫存系統！');
+  } else {
+    showMessage('setup-message', 'error', '儲存失敗，請再試一次');
+  }
+});
+
+document.getElementById('btn-setup-test').addEventListener('click', async () => {
+  const btn = document.getElementById('btn-setup-test');
+
+  // Temporarily save settings before testing
+  const body = {
+    email_user: document.getElementById('setup-email-user').value.trim(),
+    email_pass: document.getElementById('setup-email-pass').value,
+    email_to:   document.getElementById('setup-email-to').value.trim(),
+    smtp_port:  document.getElementById('setup-smtp-port').value.trim(),
+    port:       '8080',
+  };
+  await apiFetch('/settings', { method: 'PUT', body: JSON.stringify(body) });
+
+  setLoading(btn, true);
+  try {
+    const { ok, data } = await apiFetch('/settings/test-email', { method: 'POST' });
+    if (ok) {
+      showMessage('setup-message', 'success', '測試信已寄出，請檢查收件匣。');
+    } else {
+      showMessage('setup-message', 'error', `寄送失敗：${data.error || '未知錯誤'}`);
+    }
+  } finally {
+    setLoading(btn, false);
+  }
+});
+
 // ── Init ──────────────────────────────────────────────────────────────────────
 
+checkFirstRun();
 showPage('parts');

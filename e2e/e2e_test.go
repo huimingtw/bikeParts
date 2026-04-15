@@ -11,6 +11,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	sqlite "github.com/huimingtw/bikeparts/db"
+	"github.com/huimingtw/bikeparts/config"
 	"github.com/huimingtw/bikeparts/handler"
 	"github.com/huimingtw/bikeparts/middleware"
 	"github.com/huimingtw/bikeparts/router"
@@ -46,7 +47,8 @@ func TestMain(m *testing.M) {
 	}))
 	mailer := &noopMailer{}
 	notifier := service.NewNotificationService(mailer, logger)
-	h := handler.NewHandler(db, notifier, logger)
+	cfg := config.NewInMemory()
+	h := handler.NewHandler(db, notifier, logger, cfg, mailer)
 	ic := middleware.NewIdempotencyCache()
 
 	// expose resources

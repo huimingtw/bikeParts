@@ -1,9 +1,9 @@
 package service
 
 import (
-	"os"
 	"strconv"
 
+	"github.com/huimingtw/bikeparts/config"
 	gomail "gopkg.in/gomail.v2"
 )
 
@@ -12,32 +12,27 @@ type EmailService interface {
 }
 
 type EmailServiceImpl struct {
-	user    string
-	pass    string
-	mail_to string
-	port    int
+	cfg *config.AppConfig
 }
 
-func NewEmailService() *EmailServiceImpl {
-	port, err := strconv.Atoi(os.Getenv("SMTP_PORT"))
-	if err != nil {
-		port = 587
-	}
-	return &EmailServiceImpl{
-		user:    os.Getenv("EMAIL_USER"),
-		pass:    os.Getenv("EMAIL_PASS"),
-		mail_to: os.Getenv("EMAIL_TO"),
-		port:    port,
-	}
+func NewEmailService(cfg *config.AppConfig) *EmailServiceImpl {
+	return &EmailServiceImpl{cfg: cfg}
 }
 
 func (e *EmailServiceImpl) Send(subject, body string) error {
+	s := e.cfg.Get()
+
+	port, err := strconv.Atoi(s.SMTPPort)
+	if err != nil {
+		port = 587
+	}
+
 	message := gomail.NewMessage()
-	message.SetHeader("From", e.user)
-	message.SetHeader("To", e.mail_to)
+	message.SetHeader("From", s.EmailUser)
+	message.SetHeader("To", s.EmailTo)
 	message.SetHeader("Subject", subject)
 	message.SetBody("text/plain", body)
 
-	dialer := gomail.NewDialer("smtp.gmail.com", e.port, e.user, e.pass)
+	dialer := gomail.NewDialer("smtp.gmail.com", port, s.EmailUser, s.EmailPass)
 	return dialer.DialAndSend(message)
 }

@@ -58,6 +58,8 @@ body {
   list-style: none;
   padding: 16px 0;
   flex: 1;
+  display: flex;
+  flex-direction: column;
 }
 
 .sidebar-nav li {
@@ -372,4 +374,71 @@ body {
   background: var(--white);
   border-radius: var(--radius);
   box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+}
+
+/* ── Sidebar bottom item ── */
+.sidebar-bottom {
+  margin-top: auto;
+  border-top: 1px solid rgba(255,255,255,0.15);
+  padding-top: 8px;
+}
+
+/* ── Form hint ── */
+.form-hint {
+  display: block;
+  margin-top: 6px;
+  font-size: 0.85rem;
+  color: var(--gray-500);
+  line-height: 1.4;
+}
+
+/* ── Setup Wizard Overlay ── */
+.setup-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.setup-overlay.hidden {
+  display: none;
+}
+
+.setup-card {
+  background: var(--white);
+  border-radius: var(--radius);
+  padding: 40px 48px;
+  width: 100%;
+  max-width: 520px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+}
+
+.setup-header {
+  margin-bottom: 28px;
+}
+
+.setup-header h2 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--blue-dark);
+  margin-bottom: 8px;
+}
+
+.setup-header p {
+  color: var(--gray-500);
+  font-size: 0.95rem;
+}
+
+.setup-form .form-group {
+  margin-bottom: 20px;
+}
+
+.setup-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 8px;
+  justify-content: flex-end;
 }

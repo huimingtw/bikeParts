@@ -10,10 +10,10 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
-	"path/filepath"
 	"syscall"
 	"time"
 
+	"github.com/huimingtw/bikeparts/config"
 	"github.com/huimingtw/bikeparts/db"
 	"github.com/huimingtw/bikeparts/handler"
 	"github.com/huimingtw/bikeparts/middleware"
@@ -28,6 +28,11 @@ var assetsFS embed.FS
 
 func main() {
 	_ = godotenv.Load()
+
+	cfg, err := config.Load()
+	if err != nil {
+		log.Fatalf("Failed to load config: %v", err)
+	}
 
 	schemaBytes, err := assetsFS.ReadFile("db/schema.sql")
 	if err != nil {
@@ -55,9 +60,9 @@ func main() {
 		AddSource: true,
 		Level:     slog.LevelDebug,
 	}))
-	mailer := service.NewEmailService()
+	mailer := service.NewEmailService(cfg)
 	notifier := service.NewNotificationService(mailer, logger)
-	h := handler.NewHandler(database, notifier, logger)
+	h := handler.NewHandler(database, notifier, logger, cfg, mailer)
 	ic := middleware.NewIdempotencyCache()
 
 	frontendFS, err := fs.Sub(assetsFS, "frontend")
@@ -66,7 +71,8 @@ func main() {
 	}
 	r := router.NewRouter(h, ic, logger, http.FS(frontendFS))
 
-	PORT := os.Getenv("PORT")
+	settings := cfg.Get()
+	PORT := settings.Port
 	if PORT == "" {
 		PORT = "8080"
 	}
@@ -94,7 +100,6 @@ func main() {
 	if err := server.Shutdown(ctx); err != nil {
 		log.Fatalf("Server forced to shutdown: %v", err)
 	}
-
 }
 
 func defaultDBPath() (string, error) {
@@ -102,5 +107,5 @@ func defaultDBPath() (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("failed to get user config dir: %v", err)
 	}
-	return filepath.Join(baseDir, "bikeparts", "data.db"), nil
+	return fmt.Sprintf("%s/bikeparts/data.db", baseDir), nil
 }
