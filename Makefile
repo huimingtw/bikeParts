@@ -1,7 +1,6 @@
 run:
 	go run .
 
-
 seed:
 	sqlite3 ./db/data.db < ./db/seed.sql
 
@@ -15,3 +14,6 @@ build_windows:
 e2e_test:
 	go test -v ./e2e/...
 
+release:
+	@read -p "Tag (e.g. v1.0.0): " tag; \
+	git tag $$tag && git push origin $$tag

@@ -9,6 +9,7 @@ A single-node bicycle parts inventory management system built with Go + Vanilla 
 - Low stock email alerts via Gmail SMTP (triggered on decrease + periodic scheduler)
 - Idempotency key support for stock mutations
 - Vanilla JS frontend (sidebar layout, senior-friendly)
+- First-run setup wizard + settings UI (no manual config file editing)
 - E2E tests with in-memory SQLite
 
 ## Tech Stack
@@ -20,30 +21,60 @@ A single-node bicycle parts inventory management system built with Go + Vanilla 
 ## Setup
 
 ```bash
-cp .env.example .env
-# fill in your Gmail credentials
-
 make run
 # open http://localhost:8080
 ```
 
-The app creates its SQLite database in the user config directory by default instead of writing to `./db/data.db`.
+On first launch, a setup wizard will guide you through email configuration. No `.env` file required.
+
+Optional: copy `.env.example` to `.env` to pre-fill settings via environment variables.
+
+## Data Directory
+
+All persistent data is stored in the OS user config directory:
+
+| OS | Path |
+|----|------|
+| Windows | `%AppData%\bikeparts\` |
+| macOS | `~/Library/Application Support/bikeparts/` |
+| Linux | `~/.config/bikeparts/` |
+
+Files created:
+- `data.db` — SQLite database
+- `config.json` — email and port settings
+- `app.log` — rotating log (10 MB max, 3 backups, 30-day retention)
 
 ## Make Commands
 
 | Command | Description |
 |---------|-------------|
 | `make run` | Start the server |
-| `make seed` | Seed the project-local DB with sample data for development (requires `sqlite3` CLI) |
-| `make build` | Build binary to `bin/bikeparts` |
+| `make build` | Build binary to `bin/bikeparts` (macOS/Linux) |
+| `make build_windows` | Cross-compile `bin/bikeparts.exe` for Windows (requires `mingw-w64`) |
+| `make seed` | Seed the local dev DB with sample data (requires `sqlite3` CLI) |
 | `make e2e_test` | Run e2e tests |
+| `make release` | Tag and push to trigger a GitHub release |
+
+## Release (Windows .exe)
+
+Push a version tag to trigger GitHub Actions, which builds and attaches `bikeparts.exe` to a GitHub Release:
+
+```bash
+make release
+# or manually:
+git tag v1.0.0 && git push origin v1.0.0
+```
+
+Download the `.exe` from the [Releases page](https://github.com/huimingtw/bikeParts/releases). No installer needed — just run it.
 
 ## Environment Variables
+
+Environment variables override settings from `config.json`. Useful for server deployments.
 
 | Key | Description |
 |-----|-------------|
 | `PORT` | HTTP port (default: `8080`) |
-| `DB_PATH` | SQLite file path (default: user config dir, e.g. `%AppData%/bikeparts/data.db` on Windows) |
+| `DB_PATH` | SQLite file path (default: user config dir) |
 | `EMAIL_USER` | Gmail address |
 | `EMAIL_PASS` | Gmail app password |
 | `EMAIL_TO` | Alert recipient email |
@@ -73,5 +104,13 @@ The app creates its SQLite database in the user config directory by default inst
 | Method | Path | Description |
 |--------|------|-------------|
 | GET | `/api/notifications` | List active low stock notifications |
+
+### Settings
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/settings` | Get current settings (password masked) |
+| PUT | `/api/settings` | Save settings |
+| POST | `/api/settings/test-email` | Send a test email |
 
 > Stock mutation endpoints require an `Idempotency-Key` header (UUID) to prevent duplicate operations.
