@@ -7,9 +7,11 @@ import (
 	"io/fs"
 	"log"
 	"log/slog"
+	"net"
 	"net/http"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/huimingtw/bikeparts/config"
 	"github.com/huimingtw/bikeparts/db"
@@ -31,6 +33,16 @@ func main() {
 	cfg, err := config.Load()
 	if err != nil {
 		log.Fatalf("Failed to load config: %v", err)
+	}
+
+	// 已有 instance 在跑 → 直接開瀏覽器，不重複啟動
+	port := cfg.Get().Port
+	if port == "" {
+		port = "8080"
+	}
+	if isAlreadyRunning(port) {
+		openBrowser("http://localhost:" + port)
+		return
 	}
 
 	schemaBytes, err := assetsFS.ReadFile("db/schema.sql")
@@ -107,6 +119,15 @@ func openLogFile() io.Writer {
 		MaxAge:     30,  // 天
 		Compress:   true,
 	}
+}
+
+func isAlreadyRunning(port string) bool {
+	conn, err := net.DialTimeout("tcp", "localhost:"+port, 500*time.Millisecond)
+	if err != nil {
+		return false
+	}
+	conn.Close()
+	return true
 }
 
 func defaultDBPath() (string, error) {
