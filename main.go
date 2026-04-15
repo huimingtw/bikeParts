@@ -4,12 +4,14 @@ import (
 	"context"
 	"embed"
 	"fmt"
+	"io"
 	"io/fs"
 	"log"
 	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"syscall"
 	"time"
 
@@ -21,6 +23,7 @@ import (
 	"github.com/huimingtw/bikeparts/service"
 
 	"github.com/joho/godotenv"
+	"gopkg.in/lumberjack.v2"
 )
 
 //go:embed db/schema.sql frontend/*
@@ -56,7 +59,8 @@ func main() {
 	}
 	defer database.Close()
 
-	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
+	logWriter := openLogFile()
+	logger := slog.New(slog.NewJSONHandler(io.MultiWriter(os.Stdout, logWriter), &slog.HandlerOptions{
 		AddSource: true,
 		Level:     slog.LevelDebug,
 	}))
@@ -69,7 +73,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to create sub filesystem: %v", err)
 	}
-	r := router.NewRouter(h, ic, logger, http.FS(frontendFS))
+	r := router.NewRouter(h, ic, logger, frontendFS)
 
 	settings := cfg.Get()
 	PORT := settings.Port
@@ -99,6 +103,24 @@ func main() {
 	log.Printf("Shutting down server...")
 	if err := server.Shutdown(ctx); err != nil {
 		log.Fatalf("Server forced to shutdown: %v", err)
+	}
+}
+
+func openLogFile() io.Writer {
+	baseDir, err := os.UserConfigDir()
+	if err != nil {
+		return io.Discard
+	}
+	logPath := filepath.Join(baseDir, "bikeparts", "app.log")
+	if err := os.MkdirAll(filepath.Dir(logPath), 0o755); err != nil {
+		return io.Discard
+	}
+	return &lumberjack.Logger{
+		Filename:   logPath,
+		MaxSize:    10,  // MB
+		MaxBackups: 3,
+		MaxAge:     30,  // 天
+		Compress:   true,
 	}
 }
 
