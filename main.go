@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"embed"
 	"fmt"
 	"io"
@@ -10,10 +9,7 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
-	"os/signal"
 	"path/filepath"
-	"syscall"
-	"time"
 
 	"github.com/huimingtw/bikeparts/config"
 	"github.com/huimingtw/bikeparts/db"
@@ -92,18 +88,7 @@ func main() {
 	}()
 
 	log.Printf("Server is running on port %s", PORT)
-
-	quit := make(chan os.Signal, 1)
-	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
-	<-quit
-
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-
-	log.Printf("Shutting down server...")
-	if err := server.Shutdown(ctx); err != nil {
-		log.Fatalf("Server forced to shutdown: %v", err)
-	}
+	runTray(server, PORT)
 }
 
 func openLogFile() io.Writer {
