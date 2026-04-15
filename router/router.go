@@ -1,6 +1,7 @@
 package router
 
 import (
+	"io/fs"
 	"log/slog"
 	"net/http"
 
@@ -13,15 +14,21 @@ func NewRouter(
 	h *handler.Handler,
 	ic *middleware.IdempotencyCache,
 	logger *slog.Logger,
-	assets http.FileSystem,
+	frontendFS fs.FS,
 ) *gin.Engine {
 	router := gin.New()
 	router.Use(gin.Recovery())
 	router.Use(middleware.Logger(logger))
 
-	router.StaticFS("/static", assets)
+	router.StaticFS("/static", http.FS(frontendFS))
 	router.GET("/", func(c *gin.Context) {
-		c.FileFromFS("index.html", assets)
+		// 直接讀取並回傳，避免 http.FileServer 對 /index.html 發出 ./ redirect 造成無限迴圈
+		data, err := fs.ReadFile(frontendFS, "index.html")
+		if err != nil {
+			c.Status(http.StatusInternalServerError)
+			return
+		}
+		c.Data(http.StatusOK, "text/html; charset=utf-8", data)
 	})
 
 	api := router.Group("/api")

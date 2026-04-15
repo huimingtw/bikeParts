@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"io"
 	"log/slog"
-	"net/http"
 	"net/http/httptest"
 	"os"
 	"testing"
@@ -52,7 +51,7 @@ func TestMain(m *testing.M) {
 	ic := middleware.NewIdempotencyCache()
 
 	// expose resources
-	testRouter = router.NewRouter(h, ic, logger, http.Dir("../frontend"))
+	testRouter = router.NewRouter(h, ic, logger, os.DirFS("../frontend"))
 	testDB = db
 
 	os.Exit(m.Run())
