@@ -35,7 +35,7 @@ func main() {
 		log.Fatalf("Failed to load config: %v", err)
 	}
 
-	// 已有 instance 在跑 → 直接開瀏覽器，不重複啟動
+	// Another instance is already running — open the browser and exit without starting a second server.
 	port := cfg.Get().Port
 	if port == "" {
 		port = "8080"
@@ -116,7 +116,7 @@ func openLogFile() io.Writer {
 		Filename:   logPath,
 		MaxSize:    10,  // MB
 		MaxBackups: 3,
-		MaxAge:     30,  // 天
+		MaxAge:     30,  // days
 		Compress:   true,
 	}
 }

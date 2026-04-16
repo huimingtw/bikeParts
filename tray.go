@@ -23,7 +23,7 @@ import (
 )
 
 func runTray(server *http.Server, port string) {
-	// Ctrl+C / SIGTERM もtray quit と同様に処理
+	// Handle Ctrl+C / SIGTERM the same way as quitting from the tray menu.
 	go func() {
 		quit := make(chan os.Signal, 1)
 		signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
@@ -54,7 +54,7 @@ func onTrayReady(server *http.Server, port string) func() {
 			}
 		}()
 
-		// 啟動時自動開啟瀏覽器，並建立桌面捷徑
+		// Auto-open browser on startup and create desktop shortcut.
 		go openBrowser("http://localhost:" + port)
 		createDesktopShortcut(port)
 	}
@@ -62,11 +62,11 @@ func onTrayReady(server *http.Server, port string) func() {
 
 func onTrayExit(server *http.Server) func() {
 	return func() {
-		log.Println("正在關閉伺服器...")
+		log.Println("Shutting down server...")
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 		if err := server.Shutdown(ctx); err != nil {
-			log.Printf("伺服器強制關閉：%v", err)
+			log.Printf("Server forced to shut down: %v", err)
 		}
 	}
 }
@@ -84,7 +84,7 @@ func openBrowser(url string) {
 	_ = cmd.Start()
 }
 
-// createDesktopShortcut 在桌面建立捷徑（只建一次）
+// createDesktopShortcut creates a desktop shortcut on first run only.
 func createDesktopShortcut(port string) {
 	home, err := os.UserHomeDir()
 	if err != nil {
@@ -106,12 +106,12 @@ func createDesktopShortcut(port string) {
 	}
 
 	if _, err := os.Stat(path); err == nil {
-		return // 已存在，跳過
+		return // already exists, skip
 	}
 	_ = os.WriteFile(path, []byte(content), 0o644)
 }
 
-// trayIcon 產生 ICO 格式圖示（含 16x16 與 32x32 透明藍色圓形）
+// trayIcon returns an ICO-format icon with 16x16 and 32x32 blue circle images.
 func trayIcon() []byte {
 	sizes := []int{16, 32}
 	var pngs [][]byte
@@ -140,7 +140,7 @@ func circleIcon(size int) image.Image {
 	return img
 }
 
-// buildICO 組合 ICO 檔案（內含 PNG 資料，現代 ICO 格式）
+// buildICO assembles an ICO file from PNG-encoded images (modern ICO format).
 func buildICO(images [][]byte, sizes []int) []byte {
 	n := len(images)
 	var buf bytes.Buffer
@@ -167,5 +167,5 @@ func buildICO(images [][]byte, sizes []int) []byte {
 	return buf.Bytes()
 }
 
-// 確保 math 被使用（circleIcon 用到 math.Sqrt 的替代純算術版本不需要，保留供未來擴充）
+// Keep math imported for potential future use in circleIcon.
 var _ = math.Pi

@@ -22,7 +22,7 @@ func NewRouter(
 
 	router.StaticFS("/static", http.FS(frontendFS))
 	router.GET("/", func(c *gin.Context) {
-		// 直接讀取並回傳，避免 http.FileServer 對 /index.html 發出 ./ redirect 造成無限迴圈
+		// Read and serve directly to avoid the redirect loop caused by http.FileServer redirecting /index.html to ./
 		data, err := fs.ReadFile(frontendFS, "index.html")
 		if err != nil {
 			c.Status(http.StatusInternalServerError)
