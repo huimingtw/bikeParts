@@ -75,8 +75,8 @@ func (h *Handler) SaveSettings(c *gin.Context) {
 
 func (h *Handler) TestEmail(c *gin.Context) {
 	if err := h.mailer.Send(
-		"[測試] 零件庫存系統 Email 設定",
-		"這是一封測試信，確認 Email 設定正確。",
+		"【測試】零件庫存系統 Email 設定確認",
+		"這是一封測試信，確認 Email 設定正確，系統可正常寄送庫存警示通知。",
 	); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
