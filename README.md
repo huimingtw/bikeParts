@@ -1,6 +1,28 @@
 # Bike Parts Inventory
 
-A single-node bicycle parts inventory management system built with Go + Vanilla JS.
+A standalone bicycle parts inventory system for small bike shops and repair studios. The UI is in Traditional Chinese. On first launch, a setup wizard guides you through email notification configuration — no manual config file editing required.
+
+## Screenshots
+
+### Parts List
+Parts below their reorder level are highlighted in red.
+
+![Parts List](docs/screenshots/01-parts-list.png)
+
+### Stock In / Out
+Log multiple entries at once with optional notes.
+
+![Stock In](docs/screenshots/03-stock-increase.png)
+
+### Low Stock Notifications
+Shows parts that have triggered an alert. Automatically cleared after restocking.
+
+![Notifications](docs/screenshots/05-notifications.png)
+
+### Settings
+Email settings can be changed directly in the UI with a test-send button. No restart required.
+
+![Settings](docs/screenshots/06-settings.png)
 
 ## Features
 
@@ -17,6 +39,10 @@ A single-node bicycle parts inventory management system built with Go + Vanilla 
 - **Backend**: Go, Gin, SQLite (`go-sqlite3`)
 - **Frontend**: Vanilla JS, HTML, CSS (no build step)
 - **Email**: Gmail SMTP via `gomail.v2`
+
+## Database Schema
+
+![DB Diagram](docs/screenshots/db-diagram.png)
 
 ## Setup
 
@@ -36,8 +62,6 @@ All persistent data is stored in the OS user config directory:
 | OS | Path |
 |----|------|
 | Windows | `%AppData%\bikeparts\` |
-| macOS | `~/Library/Application Support/bikeparts/` |
-| Linux | `~/.config/bikeparts/` |
 
 Files created:
 - `data.db` — SQLite database
@@ -54,18 +78,6 @@ Files created:
 | `make seed` | Seed the local dev DB with sample data (requires `sqlite3` CLI) |
 | `make e2e_test` | Run e2e tests |
 | `make release` | Tag and push to trigger a GitHub release |
-
-## Release (Windows .exe)
-
-Push a version tag to trigger GitHub Actions, which builds and attaches `bikeparts.exe` to a GitHub Release:
-
-```bash
-make release
-# or manually:
-git tag v1.0.0 && git push origin v1.0.0
-```
-
-Download the `.exe` from the [Releases page](https://github.com/huimingtw/bikeParts/releases). No installer needed — just run it.
 
 ## Environment Variables
 
@@ -114,3 +126,7 @@ Environment variables override settings from `config.json`. Useful for server de
 | POST | `/api/settings/test-email` | Send a test email |
 
 > Stock mutation endpoints require an `Idempotency-Key` header (UUID) to prevent duplicate operations.
+
+## Give It a Try (Windows)
+
+Download the latest `bikeparts.exe` from the [Releases page](https://github.com/huimingtw/bikeParts/releases) and run it.
