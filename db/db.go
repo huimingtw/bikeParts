@@ -40,6 +40,10 @@ func Init(cfg Config) (*sql.DB, error) {
 		return nil, fmt.Errorf("failed to execute schema: %v", err)
 	}
 
+	// Idempotent migrations for columns added after initial release.
+	// SQLite returns an error if the column already exists; that's expected — ignore it.
+	_, _ = db.Exec(`ALTER TABLE low_stock_notifications ADD COLUMN sent_at DATETIME`)
+
 	if len(cfg.Seed) > 0 {
 		count := 0
 		if err := db.QueryRow("SELECT COUNT(*) FROM parts").Scan(&count); err != nil {

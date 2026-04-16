@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"embed"
 	"fmt"
 	"io"
@@ -73,7 +74,21 @@ func main() {
 		Level:     slog.LevelDebug,
 	}))
 	mailer := service.NewEmailService(cfg)
-	notifier := service.NewNotificationService(mailer, logger)
+	notifier := service.NewNotificationService(mailer, logger, database)
+
+	// Start a background goroutine to retry sending unsent notifications every day at noon.
+	go func() {
+		for {
+			now := time.Now()
+			next := time.Date(now.Year(), now.Month(), now.Day(), 12, 0, 0, 0, now.Location())
+			if !next.After(now) {
+				next = next.Add(24 * time.Hour)
+			}
+			time.Sleep(time.Until(next))
+			notifier.RetryUnsent(context.Background())
+		}
+	}()
+
 	h := handler.NewHandler(database, notifier, logger, cfg, mailer)
 	ic := middleware.NewIdempotencyCache()
 
@@ -114,9 +129,9 @@ func openLogFile() io.Writer {
 	}
 	return &lumberjack.Logger{
 		Filename:   logPath,
-		MaxSize:    10,  // MB
+		MaxSize:    10, // MB
 		MaxBackups: 3,
-		MaxAge:     30,  // days
+		MaxAge:     30, // days
 		Compress:   true,
 	}
 }

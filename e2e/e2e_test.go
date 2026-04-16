@@ -45,7 +45,7 @@ func TestMain(m *testing.M) {
 		Level:     slog.LevelDebug,
 	}))
 	mailer := &noopMailer{}
-	notifier := service.NewNotificationService(mailer, logger)
+	notifier := service.NewNotificationService(mailer, logger, db)
 	cfg := config.NewInMemory()
 	h := handler.NewHandler(db, notifier, logger, cfg, mailer)
 	ic := middleware.NewIdempotencyCache()

@@ -25,6 +25,7 @@ CREATE TABLE IF NOT EXISTS low_stock_notifications (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   part_id INTEGER NOT NULL,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  sent_at DATETIME,
   deleted_at DATETIME,
   FOREIGN KEY (part_id) REFERENCES parts(id)
 );
