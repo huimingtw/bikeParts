@@ -8,11 +8,12 @@ import (
 )
 
 type Settings struct {
-	Port      string `json:"port"`
-	EmailUser string `json:"email_user"`
-	EmailPass string `json:"email_pass"`
-	EmailTo   string `json:"email_to"`
-	SMTPPort  string `json:"smtp_port"`
+	Port                      string `json:"port"`
+	EmailUser                 string `json:"email_user"`
+	EmailPass                 string `json:"email_pass"`
+	EmailTo                   string `json:"email_to"`
+	SMTPPort                  string `json:"smtp_port"`
+	EmailNotificationsEnabled bool   `json:"email_notifications_enabled"`
 }
 
 type AppConfig struct {
@@ -31,8 +32,9 @@ func Load() (*AppConfig, error) {
 	cfg := &AppConfig{
 		path: path,
 		settings: Settings{
-			Port:     envOr("PORT", "8080"),
-			SMTPPort: envOr("SMTP_PORT", "587"),
+			Port:                      envOr("PORT", "8080"),
+			SMTPPort:                  envOr("SMTP_PORT", "587"),
+			EmailNotificationsEnabled: true,
 		},
 	}
 
@@ -44,7 +46,8 @@ func Load() (*AppConfig, error) {
 	// Config file overrides env vars if it exists
 	data, err := os.ReadFile(path)
 	if err == nil {
-		var s Settings
+		// Pre-populate defaults so missing bool fields stay true rather than zeroing.
+		s := Settings{EmailNotificationsEnabled: true}
 		if jsonErr := json.Unmarshal(data, &s); jsonErr == nil {
 			cfg.settings = s
 		}
@@ -56,7 +59,7 @@ func Load() (*AppConfig, error) {
 // NewInMemory creates a config with no file persistence (used in tests).
 func NewInMemory() *AppConfig {
 	return &AppConfig{
-		settings: Settings{Port: "8080", SMTPPort: "587"},
+		settings: Settings{Port: "8080", SMTPPort: "587", EmailNotificationsEnabled: true},
 	}
 }
 

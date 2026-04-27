@@ -8,12 +8,13 @@ import (
 )
 
 type settingsResponse struct {
-	Port         string `json:"port"`
-	EmailUser    string `json:"email_user"`
-	EmailPass    string `json:"email_pass"` // always masked on GET
-	EmailTo      string `json:"email_to"`
-	SMTPPort     string `json:"smtp_port"`
-	IsConfigured bool   `json:"is_configured"`
+	Port                      string `json:"port"`
+	EmailUser                 string `json:"email_user"`
+	EmailPass                 string `json:"email_pass"` // always masked on GET
+	EmailTo                   string `json:"email_to"`
+	SMTPPort                  string `json:"smtp_port"`
+	EmailNotificationsEnabled bool   `json:"email_notifications_enabled"`
+	IsConfigured              bool   `json:"is_configured"`
 }
 
 func (h *Handler) GetSettings(c *gin.Context) {
@@ -23,12 +24,13 @@ func (h *Handler) GetSettings(c *gin.Context) {
 		pass = "****"
 	}
 	c.JSON(http.StatusOK, settingsResponse{
-		Port:         s.Port,
-		EmailUser:    s.EmailUser,
-		EmailPass:    pass,
-		EmailTo:      s.EmailTo,
-		SMTPPort:     s.SMTPPort,
-		IsConfigured: h.cfg.IsConfigured(),
+		Port:                      s.Port,
+		EmailUser:                 s.EmailUser,
+		EmailPass:                 pass,
+		EmailTo:                   s.EmailTo,
+		SMTPPort:                  s.SMTPPort,
+		EmailNotificationsEnabled: s.EmailNotificationsEnabled,
+		IsConfigured:              h.cfg.IsConfigured(),
 	})
 }
 
@@ -57,11 +59,12 @@ func (h *Handler) SaveSettings(c *gin.Context) {
 	}
 
 	next := config.Settings{
-		Port:      port,
-		EmailUser: body.EmailUser,
-		EmailPass: pass,
-		EmailTo:   body.EmailTo,
-		SMTPPort:  smtpPort,
+		Port:                      port,
+		EmailUser:                 body.EmailUser,
+		EmailPass:                 pass,
+		EmailTo:                   body.EmailTo,
+		SMTPPort:                  smtpPort,
+		EmailNotificationsEnabled: body.EmailNotificationsEnabled,
 	}
 	if err := h.cfg.Set(next); err != nil {
 		h.logger.ErrorContext(c.Request.Context(), "failed to save settings", "err", err)

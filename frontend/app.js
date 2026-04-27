@@ -219,7 +219,7 @@ function collectStockRows(type) {
     const amount = parseInt(row.querySelector('.row-amount').value, 10);
     const note   = row.querySelector('.row-note').value.trim();
     if (!partId || !amount || amount < 1) return null; // invalid
-    items.push({ partId, partLabel, amount, note });
+    items.push({ partId, partLabel, amount, note, el: row });
   }
   return items;
 }
@@ -272,9 +272,16 @@ document.getElementById('btn-submit-decrease').addEventListener('click', async (
     showMessage('decrease-message', 'error', '請至少填寫一筆完整資料');
     return;
   }
+  // Clear previous inline errors
+  document.querySelectorAll('#decrease-list .row-error').forEach(el => el.remove());
+  document.querySelectorAll('#decrease-list .stock-row').forEach(el => el.classList.remove('row-has-error'));
+
   setLoading(btn, true);
+  const lowStockAlerts = [];
+  let saved = 0;
+  let failed = 0;
   try {
-    for (const { partId, partLabel, amount, note } of items) {
+    for (const { partId, amount, note, el } of items) {
       const { ok, data } = await apiFetch(`/parts/${partId}/decrease`, {
         method: 'POST',
         headers: { 'Idempotency-Key': generateIdempotencyKey() },
@@ -282,15 +289,50 @@ document.getElementById('btn-submit-decrease').addEventListener('click', async (
       });
       if (!ok) {
         const reason = data?.error === 'insufficient stock' ? '庫存不足' : '操作失敗';
-        showMessage('decrease-message', 'error', `${partLabel}：${reason}`);
-        return;
+        el.classList.add('row-has-error');
+        const errEl = document.createElement('span');
+        errEl.className = 'row-error';
+        errEl.textContent = reason;
+        el.appendChild(errEl);
+        failed++;
+        continue;
+      }
+      el.remove();
+      saved++;
+      if (data?.low_stock) {
+        lowStockAlerts.push({ name: data.name, sku: data.sku, stock: data.stock, reorderLevel: data.reorder_level });
       }
     }
-    showMessage('decrease-message', 'success', `消耗紀錄已儲存，共 ${items.length} 筆`);
-    loadStockPage('decrease');
+    if (failed > 0 && saved === 0) {
+      showMessage('decrease-message', 'error', `${failed} 筆失敗，請修正後重新提交`);
+    } else if (failed > 0) {
+      showMessage('decrease-message', 'error', `已儲存 ${saved} 筆，${failed} 筆失敗，請修正後重新提交`);
+    } else {
+      showMessage('decrease-message', 'success', `消耗紀錄已儲存，共 ${saved} 筆`);
+      loadStockPage('decrease');
+    }
+    if (lowStockAlerts.length > 0) showLowStockModal(lowStockAlerts);
   } finally {
     setLoading(btn, false);
   }
+});
+
+function showLowStockModal(alerts) {
+  const list = document.getElementById('low-stock-modal-list');
+  list.innerHTML = alerts.map(a =>
+    `<li><strong>${a.name}</strong>（SKU: ${a.sku}）— 剩餘 <strong>${a.stock}</strong> 件 / 水位 ${a.reorderLevel} 件</li>`
+  ).join('');
+  document.getElementById('low-stock-modal').classList.remove('hidden');
+}
+
+document.getElementById('btn-close-low-stock-modal').addEventListener('click', () => {
+  document.getElementById('low-stock-modal').classList.add('hidden');
+});
+document.getElementById('btn-confirm-low-stock-modal').addEventListener('click', () => {
+  document.getElementById('low-stock-modal').classList.add('hidden');
+});
+document.getElementById('low-stock-modal').addEventListener('click', (e) => {
+  if (e.target === e.currentTarget) e.currentTarget.classList.add('hidden');
 });
 
 // ── Notifications ─────────────────────────────────────────────────────────────
@@ -334,21 +376,23 @@ async function loadSettings() {
   const { ok, data } = await apiFetch('/settings');
   if (!ok) return;
 
-  document.getElementById('settings-email-user').value = data.email_user || '';
-  document.getElementById('settings-email-pass').value = data.email_pass || '';
-  document.getElementById('settings-email-to').value   = data.email_to   || '';
-  document.getElementById('settings-smtp-port').value  = data.smtp_port  || '587';
-  document.getElementById('settings-port').value       = data.port       || '8080';
+  document.getElementById('settings-email-user').value    = data.email_user || '';
+  document.getElementById('settings-email-pass').value    = data.email_pass || '';
+  document.getElementById('settings-email-to').value      = data.email_to   || '';
+  document.getElementById('settings-smtp-port').value     = data.smtp_port  || '587';
+  document.getElementById('settings-port').value          = data.port       || '8080';
+  document.getElementById('settings-email-enabled').checked = data.email_notifications_enabled ?? true;
 }
 
 document.getElementById('settings-form').addEventListener('submit', async e => {
   e.preventDefault();
   const body = {
-    email_user: document.getElementById('settings-email-user').value.trim(),
-    email_pass: document.getElementById('settings-email-pass').value,
-    email_to:   document.getElementById('settings-email-to').value.trim(),
-    smtp_port:  document.getElementById('settings-smtp-port').value.trim(),
-    port:       document.getElementById('settings-port').value.trim(),
+    email_user:                  document.getElementById('settings-email-user').value.trim(),
+    email_pass:                  document.getElementById('settings-email-pass').value,
+    email_to:                    document.getElementById('settings-email-to').value.trim(),
+    smtp_port:                   document.getElementById('settings-smtp-port').value.trim(),
+    port:                        document.getElementById('settings-port').value.trim(),
+    email_notifications_enabled: document.getElementById('settings-email-enabled').checked,
   };
 
   const { ok, data } = await apiFetch('/settings', { method: 'PUT', body: JSON.stringify(body) });

@@ -183,10 +183,15 @@ type AdjustStockRequest struct {
 	Note   string `json:"note"`
 }
 
-func (h *Handler) adjustPartStock(ctx context.Context, partID int, amount int, note string) error {
+type adjustResult struct {
+	Part     models.Part
+	LowStock bool // true when stock dropped to or below reorder level
+}
+
+func (h *Handler) adjustPartStock(ctx context.Context, partID int, amount int, note string) (adjustResult, error) {
 	tx, err := h.db.BeginTx(ctx, nil)
 	if err != nil {
-		return err
+		return adjustResult{}, err
 	}
 	defer tx.Rollback()
 
@@ -196,38 +201,41 @@ func (h *Handler) adjustPartStock(ctx context.Context, partID int, amount int, n
 		"SELECT stock, reorder_level, sku, name FROM parts WHERE id = ? AND deleted_at IS NULL", partID).
 		Scan(&currentStock, &reorderLevel, &sku, &name)
 	if err != nil {
-		return err
+		return adjustResult{}, err
 	}
 
 	newStock := currentStock + amount
 	if newStock < 0 {
-		return ErrInsufficientStock
+		return adjustResult{}, ErrInsufficientStock
 	}
 
 	_, err = tx.ExecContext(ctx,
 		"UPDATE parts SET stock = ?, updated_at = datetime('now') WHERE id = ?", newStock, partID)
 	if err != nil {
-		return err
+		return adjustResult{}, err
 	}
 
 	_, err = tx.ExecContext(ctx,
 		"INSERT INTO stock_movements (part_id, quantity, note) VALUES (?, ?, ?)", partID, amount, note)
 	if err != nil {
-		return err
+		return adjustResult{}, err
 	}
 
 	part := models.Part{ID: int64(partID), SKU: sku, Name: name, Stock: newStock, ReorderLevel: reorderLevel}
 	if amount > 0 {
 		if err := h.notifier.ClearNotification(ctx, tx, part.ID); err != nil {
-			return err
+			return adjustResult{}, err
 		}
 	} else {
 		if err := h.notifier.CheckAndNotify(ctx, tx, part); err != nil {
-			return err
+			return adjustResult{}, err
 		}
 	}
 
-	return tx.Commit()
+	if err := tx.Commit(); err != nil {
+		return adjustResult{}, err
+	}
+	return adjustResult{Part: part, LowStock: amount < 0 && newStock <= reorderLevel}, nil
 }
 
 func (h *Handler) IncreasePartStock(c *gin.Context) {
@@ -244,7 +252,7 @@ func (h *Handler) IncreasePartStock(c *gin.Context) {
 		return
 	}
 
-	if err := h.adjustPartStock(c.Request.Context(), req.ID, body.Amount, body.Note); err != nil {
+	if _, err := h.adjustPartStock(c.Request.Context(), req.ID, body.Amount, body.Note); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			c.JSON(http.StatusNotFound, gin.H{"error": "part not found"})
 			return
@@ -271,7 +279,8 @@ func (h *Handler) DecreasePartStock(c *gin.Context) {
 		return
 	}
 
-	if err := h.adjustPartStock(c.Request.Context(), req.ID, -body.Amount, body.Note); err != nil {
+	result, err := h.adjustPartStock(c.Request.Context(), req.ID, -body.Amount, body.Note)
+	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			c.JSON(http.StatusNotFound, gin.H{"error": "part not found"})
 			return
@@ -285,5 +294,11 @@ func (h *Handler) DecreasePartStock(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{})
+	c.JSON(http.StatusOK, gin.H{
+		"low_stock":     result.LowStock,
+		"name":          result.Part.Name,
+		"sku":           result.Part.SKU,
+		"stock":         result.Part.Stock,
+		"reorder_level": result.Part.ReorderLevel,
+	})
 }

@@ -16,13 +16,14 @@ type dbQuerier interface {
 }
 
 type NotificationService struct {
-	mailer EmailService
-	logger *slog.Logger
-	db     *sql.DB
+	mailer    EmailService
+	logger    *slog.Logger
+	db        *sql.DB
+	isEnabled func() bool
 }
 
-func NewNotificationService(mailer EmailService, logger *slog.Logger, db *sql.DB) *NotificationService {
-	return &NotificationService{mailer: mailer, logger: logger, db: db}
+func NewNotificationService(mailer EmailService, logger *slog.Logger, db *sql.DB, isEnabled func() bool) *NotificationService {
+	return &NotificationService{mailer: mailer, logger: logger, db: db, isEnabled: isEnabled}
 }
 
 func (n *NotificationService) CheckAndNotify(ctx context.Context, db dbQuerier, part models.Part) error {
@@ -51,6 +52,11 @@ func (n *NotificationService) CheckAndNotify(ctx context.Context, db dbQuerier, 
 	}
 	notifID, _ := result.LastInsertId()
 
+	if !n.isEnabled() {
+		n.logger.DebugContext(ctx, "email notifications disabled, skipping send", "part_id", part.ID, "sku", part.SKU)
+		return nil
+	}
+
 	subject := fmt.Sprintf("【庫存警示】%s（SKU: %s）剩餘 %d 件", part.Name, part.SKU, part.Stock)
 	body := fmt.Sprintf("零件名稱：%s\nSKU：%s\n目前庫存：%d\n再訂購水位：%d\n\n請盡快補貨。", part.Name, part.SKU, part.Stock, part.ReorderLevel)
 	go func() {
@@ -75,6 +81,11 @@ func (n *NotificationService) ClearNotification(ctx context.Context, db dbQuerie
 // RetryUnsent looks for notifications where the email was never sent and retries them.
 // Intended to be called on a schedule (e.g. every 5 minutes).
 func (n *NotificationService) RetryUnsent(ctx context.Context) {
+	if !n.isEnabled() {
+		n.logger.DebugContext(ctx, "email notifications disabled, skipping retry")
+		return
+	}
+
 	rows, err := n.db.QueryContext(ctx, `
 		SELECT n.id, p.name, p.sku, p.stock, p.reorder_level
 		FROM low_stock_notifications n

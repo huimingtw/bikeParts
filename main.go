@@ -74,7 +74,9 @@ func main() {
 		Level:     slog.LevelDebug,
 	}))
 	mailer := service.NewEmailService(cfg)
-	notifier := service.NewNotificationService(mailer, logger, database)
+	notifier := service.NewNotificationService(mailer, logger, database, func() bool {
+		return cfg.Get().EmailNotificationsEnabled
+	})
 
 	// Start a background goroutine to retry sending unsent notifications every day at noon.
 	go func() {

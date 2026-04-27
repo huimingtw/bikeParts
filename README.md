@@ -19,8 +19,13 @@ Shows parts that have triggered an alert. Automatically cleared after restocking
 
 ![Notifications](docs/screenshots/05-notifications.png)
 
+### Stock Out
+Submit multiple entries at once. Successful rows are removed immediately; failed rows (e.g. insufficient stock) stay highlighted inline so you can fix and resubmit without re-entering the others. A low-stock warning modal pops up automatically if any part drops to or below its reorder level after the operation.
+
+![Stock Out](docs/screenshots/04.1-stock-decrease-error.png)
+
 ### Settings
-Email settings can be changed directly in the UI with a test-send button. No restart required.
+Email settings can be changed directly in the UI with a test-send button. No restart required. Email notifications can be toggled on/off without removing the SMTP credentials.
 
 ![Settings](docs/screenshots/06-settings.png)
 
@@ -28,7 +33,10 @@ Email settings can be changed directly in the UI with a test-send button. No res
 
 - Parts CRUD with soft delete
 - Stock increase / decrease with movement history
-- Low stock email alerts via Gmail SMTP (triggered on decrease + periodic scheduler)
+- Batch stock-out: all rows submitted together; failed rows highlighted inline, successful rows removed immediately
+- Low stock pop-up alert on the decrease page when stock drops to or below reorder level
+- Low stock email alerts via Gmail SMTP (triggered on decrease + daily retry scheduler)
+- Email notifications toggle (enable/disable without clearing credentials)
 - Idempotency key support for stock mutations
 - Vanilla JS frontend (sidebar layout, senior-friendly)
 - First-run setup wizard + settings UI (no manual config file editing)
