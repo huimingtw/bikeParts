@@ -13,7 +13,7 @@ import (
 func (h *Handler) GetParts(c *gin.Context) {
 	ctx := c.Request.Context()
 	rows, err := h.db.QueryContext(ctx, `
-		SELECT id, sku, name, stock, reorder_level, created_at, updated_at
+		SELECT id, sku, name, stock, reorder_level, location, created_at, updated_at
 		FROM parts
 		WHERE deleted_at IS NULL
 	`)
@@ -27,7 +27,7 @@ func (h *Handler) GetParts(c *gin.Context) {
 	parts := []models.Part{}
 	for rows.Next() {
 		var p models.Part
-		if err := rows.Scan(&p.ID, &p.SKU, &p.Name, &p.Stock, &p.ReorderLevel, &p.CreatedAt, &p.UpdatedAt); err != nil {
+		if err := rows.Scan(&p.ID, &p.SKU, &p.Name, &p.Stock, &p.ReorderLevel, &p.Location, &p.CreatedAt, &p.UpdatedAt); err != nil {
 			h.logger.ErrorContext(ctx, "failed to scan part", "err", err)
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
 			return
@@ -57,11 +57,11 @@ func (h *Handler) GetPartByID(c *gin.Context) {
 	ctx := c.Request.Context()
 	var p models.Part
 	err = h.db.QueryRowContext(ctx, `
-		SELECT id, sku, name, stock, reorder_level, created_at, updated_at
+		SELECT id, sku, name, stock, reorder_level, location, created_at, updated_at
 		FROM parts
 		WHERE id = ? AND deleted_at IS NULL
 	`, req.ID,
-	).Scan(&p.ID, &p.SKU, &p.Name, &p.Stock, &p.ReorderLevel, &p.CreatedAt, &p.UpdatedAt)
+	).Scan(&p.ID, &p.SKU, &p.Name, &p.Stock, &p.ReorderLevel, &p.Location, &p.CreatedAt, &p.UpdatedAt)
 	if errors.Is(err, sql.ErrNoRows) {
 		c.JSON(http.StatusNotFound, gin.H{"error": "part not found"})
 		return
@@ -80,6 +80,7 @@ type CreatePartRequest struct {
 	Name         string `json:"name" binding:"required"`
 	Stock        int    `json:"stock" binding:"min=0"`
 	ReorderLevel int    `json:"reorder_level" binding:"min=0"`
+	Location     string `json:"location"`
 }
 
 func (h *Handler) CreatePart(c *gin.Context) {
@@ -92,9 +93,9 @@ func (h *Handler) CreatePart(c *gin.Context) {
 
 	ctx := c.Request.Context()
 	_, err = h.db.ExecContext(ctx, `
-		INSERT INTO parts (sku, name, stock, reorder_level, created_at, updated_at)
-		VALUES (?, ?, ?, ?, datetime('now'), datetime('now'))
-	`, req.SKU, req.Name, req.Stock, req.ReorderLevel)
+		INSERT INTO parts (sku, name, stock, reorder_level, location, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, datetime('now'), datetime('now'))
+	`, req.SKU, req.Name, req.Stock, req.ReorderLevel, req.Location)
 	if err != nil {
 		h.logger.ErrorContext(ctx, "failed to insert part", "sku", req.SKU, "err", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
@@ -121,9 +122,9 @@ func (h *Handler) UpdatePart(c *gin.Context) {
 	ctx := c.Request.Context()
 	result, err := h.db.ExecContext(ctx, `
 		UPDATE parts
-		SET sku = ?, name = ?, stock = ?, reorder_level = ?, updated_at = datetime('now')
+		SET sku = ?, name = ?, stock = ?, reorder_level = ?, location = ?, updated_at = datetime('now')
 		WHERE id = ? AND deleted_at IS NULL
-	`, body.SKU, body.Name, body.Stock, body.ReorderLevel, req.ID)
+	`, body.SKU, body.Name, body.Stock, body.ReorderLevel, body.Location, req.ID)
 	if err != nil {
 		h.logger.ErrorContext(ctx, "failed to update part", "id", req.ID, "err", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})

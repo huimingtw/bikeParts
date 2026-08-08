@@ -66,7 +66,7 @@ async function loadParts() {
 
   if (!data || data.length === 0) {
     const tr = document.createElement('tr');
-    tr.innerHTML = '<td colspan="5" style="text-align:center;color:#6c757d">目前沒有零件資料</td>';
+    tr.innerHTML = '<td colspan="6" style="text-align:center;color:#6c757d">目前沒有零件資料</td>';
     tbody.appendChild(tr);
     return;
   }
@@ -78,6 +78,7 @@ async function loadParts() {
     tr.innerHTML = `
       <td>${part.sku}</td>
       <td>${part.name}</td>
+      <td>${part.location || ''}</td>
       <td>${part.stock}${isLow ? ' ⚠' : ''}</td>
       <td>${part.reorder_level}</td>
       <td><button class="btn btn-secondary" style="padding:8px 16px;font-size:0.9rem">編輯</button></td>
@@ -118,6 +119,7 @@ function openCreateForm() {
   document.getElementById('part-id').value = '';
   document.getElementById('part-sku').value = '';
   document.getElementById('part-name').value = '';
+  document.getElementById('part-location').value = '';
   document.getElementById('part-stock').value = '0';
   document.getElementById('part-reorder').value = '0';
   document.getElementById('part-sku').removeAttribute('readonly');
@@ -135,6 +137,7 @@ function openEditForm(part) {
   document.getElementById('part-id').value = part.id;
   document.getElementById('part-sku').value = part.sku;
   document.getElementById('part-name').value = part.name;
+  document.getElementById('part-location').value = part.location || '';
   document.getElementById('part-stock').value = part.stock;
   document.getElementById('part-reorder').value = part.reorder_level;
   document.getElementById('part-sku').setAttribute('readonly', true);
@@ -153,6 +156,7 @@ document.getElementById('part-form').addEventListener('submit', async e => {
   const body = {
     sku:           document.getElementById('part-sku').value.trim(),
     name:          document.getElementById('part-name').value.trim(),
+    location:      document.getElementById('part-location').value.trim(),
     stock:         parseInt(document.getElementById('part-stock').value, 10),
     reorder_level: parseInt(document.getElementById('part-reorder').value, 10),
   };

@@ -43,6 +43,7 @@ func Init(cfg Config) (*sql.DB, error) {
 	// Idempotent migrations for columns added after initial release.
 	// SQLite returns an error if the column already exists; that's expected — ignore it.
 	_, _ = db.Exec(`ALTER TABLE low_stock_notifications ADD COLUMN sent_at DATETIME`)
+	_, _ = db.Exec(`ALTER TABLE parts ADD COLUMN location TEXT NOT NULL DEFAULT ''`)
 
 	if len(cfg.Seed) > 0 {
 		count := 0
